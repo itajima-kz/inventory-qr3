@@ -325,39 +325,48 @@
   .reg-hdr-clr:active{background:rgba(255,255,255,.35);}
   /* ボディ */
   .reg-modal-body{padding:14px 16px 8px;}
-  /* 場所・担当者バッジ行 ②幅を拡大 */
-  .reg-op-row{display:flex;gap:8px;margin-bottom:14px;}
+  /* 場所・担当者バッジ行 */
+  .reg-op-row{display:flex;gap:8px;margin-bottom:16px;}
   .reg-op-badge{
-    flex:1;                /* ② クリアボタン幅を除いた幅を二分 */
+    flex:1;
     background:linear-gradient(135deg,var(--primary),var(--blue));
-    color:#fff;font-size:15px;font-weight:700;
-    padding:8px 10px;border-radius:20px;
+    color:#fff;font-size:20px;font-weight:700;
+    padding:10px 12px;border-radius:22px;
     letter-spacing:.04em;text-align:center;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .reg-op-badge.empty{background:var(--warn);}
   /* フォーム行（ラベル横並び） */
   .reg-form-row{display:flex;align-items:flex-start;gap:12px;
-    border-bottom:1px solid var(--blue-lt);padding:11px 0;}
+    border-bottom:1px solid var(--blue-lt);padding:13px 0;}
   .reg-form-row:last-of-type{border-bottom:none;}
-  /* ③ ラベル文字サイズUP */
-  .reg-form-label{font-size:14px;font-weight:700;color:var(--text-light);
-    min-width:44px;padding-top:2px;letter-spacing:.04em;flex-shrink:0;}
-  /* ④ 値文字サイズUP */
-  .reg-form-val{flex:1;font-size:17px;font-weight:600;color:var(--text);
-    line-height:1.55;word-break:break-all;}
+  /* ラベル */
+  .reg-form-label{font-size:17px;font-weight:700;color:var(--text-light);
+    min-width:58px;padding-top:2px;letter-spacing:.04em;flex-shrink:0;}
+  /* 値 */
+  .reg-form-val{flex:1;font-size:22px;font-weight:600;color:var(--text);
+    line-height:1.45;word-break:break-all;}
   .reg-form-val.warn{color:var(--warn);}
   .reg-form-val.filled{color:var(--filled);}
-  /* ④ 品名：2行固定 */
+  /* 品名：2行固定 */
   .reg-form-val.hinmei{
     display:-webkit-box;-webkit-box-orient:vertical;
     -webkit-line-clamp:2;overflow:hidden;
-    min-height:calc(1.55em * 2);}   /* 2行分の高さを最低確保 */
+    min-height:calc(1.45em * 2);}
   /* 製番（OCR時のみ入力可） */
   .reg-sei-input{width:100%;font-size:16px;font-weight:500;color:var(--text);
     border:none;border-bottom:2px solid var(--blue-lt);background:transparent;
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.08em;}
   .reg-sei-input:focus{border-bottom-color:var(--blue);}
+  /* 在庫区分セレクト（モーダル内） */
+  .reg-its-sel{width:100%;font-size:16px;font-weight:500;font-family:var(--font);
+    color:var(--text);background:var(--surface);
+    border:none;border-bottom:2px solid var(--blue-lt);
+    padding:4px 4px 4px 2px;outline:none;-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7a99' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 4px center;padding-right:22px;}
+  .reg-its-sel:focus{border-bottom-color:var(--blue);}
+  .reg-its-sel.warn{border-bottom-color:var(--warn);}
   /* ⑤ 数量エリア：入力欄が見切れない構成 */
   .reg-qty-wrap{background:var(--surface2);border:2px solid var(--blue-lt);
     border-radius:var(--radius-sm);padding:10px 14px;margin:10px 0 12px;}
@@ -584,7 +593,7 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.1.2<br>
+          <div class="s-info">DX棚卸アプリ v3.1.4<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span style="color:#0f9e6e;font-weight:700;">✔ Bug-1〜9 修正済み（品名ロック/担当者復元/末尾0リスト連携 等）</span></div>
@@ -629,6 +638,13 @@
       <div class="reg-form-row">
         <div class="reg-form-label">品名</div>
         <div class="reg-form-val hinmei" id="regFvHinmei"></div>
+      </div>
+      <!-- フォーム行：在庫区分（常時表示・必須） -->
+      <div class="reg-form-row">
+        <div class="reg-form-label">在庫区分</div>
+        <select class="reg-its-sel" id="regItsSelect" onchange="onRegItsChange()">
+          <option value="">&#9135; 選択してください &#9135;</option>
+        </select>
       </div>
       <!-- フォーム行：製番（OCR時のみ） -->
       <div class="reg-form-row" id="regSeiRow" style="display:none">
@@ -1574,6 +1590,23 @@ function openRegModal() {
   fvH.textContent = hinmei || '（マスタ未登録）';
   fvH.className = 'reg-form-val' + (hinmei ? ' filled' : ' warn');
 
+  /* --- 在庫区分セレクトをモーダル用に同期 ---
+     非表示its(本体)の選択肢をregItsSelectにコピーして現在値を反映 */
+  var itsSrc = document.getElementById('its');
+  var itsDst = document.getElementById('regItsSelect');
+  if (itsSrc && itsDst) {
+    /* 選択肢を毎回コピー（マスタロード後に増えている可能性があるため） */
+    itsDst.innerHTML = '';
+    for (var oi = 0; oi < itsSrc.options.length; oi++) {
+      var opt = document.createElement('option');
+      opt.value = itsSrc.options[oi].value;
+      opt.textContent = itsSrc.options[oi].textContent;
+      itsDst.appendChild(opt);
+    }
+    itsDst.value = itsSrc.value;
+    itsDst.className = 'reg-its-sel' + (itsSrc.value ? '' : ' warn');
+  }
+
   /* --- 製番行: OCRのみ表示・入力可 --- */
   var seiRow = document.getElementById('regSeiRow');
   var seiInp = document.getElementById('regSeiInput');
@@ -1612,6 +1645,19 @@ function resetFromModal() {
   resetScan();
 }
 
+/* モーダル内の在庫区分変更 → 本体its欄に反映 → 登録ボタン活性更新 */
+function onRegItsChange() {
+  var sel = document.getElementById('regItsSelect');
+  var itsSrc = document.getElementById('its');
+  if (sel && itsSrc) {
+    itsSrc.value = sel.value;
+    sel.className = 'reg-its-sel' + (sel.value ? '' : ' warn');
+    /* sessionStorage にも保存 */
+    try { sessionStorage.setItem('inv_itype', sel.value); } catch(e){}
+  }
+  updReg();
+}
+
 /* ① クリアボタン（ヘッダー右上）：モーダル内の入力可能項目のみクリア */
 function clearRegModal() {
   /* 数量をゼロに */
@@ -1632,9 +1678,11 @@ function updReg() {
   var z = document.getElementById('zuno').value.trim();
   var d = document.getElementById('ds').value;
   var p = document.getElementById('ps').value;
-  var t = document.getElementById('its').value;
+  /* 在庫区分: モーダルが開いていればregItsSelect、そうでなければ非表示its */
+  var regIts = document.getElementById('regItsSelect');
+  var modalOpen = document.getElementById('regmover').classList.contains('on');
+  var t = (modalOpen && regIts) ? regIts.value : document.getElementById('its').value;
   var ok = !!(z && d && p && t);
-  /* ★ [v3.0.0] モーダル内の登録ボタンを活性制御 */
   var mb = document.getElementById('regModalBtn');
   if (mb) mb.disabled = !ok;
 }
