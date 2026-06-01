@@ -196,26 +196,7 @@
   .ocr-hint{font-size:10px;color:#888;text-align:center;margin-top:3px;}
   .qty-sec{margin-top:8px;}
   .qty-lbl{font-size:16px;color:var(--blue-dk);font-weight:700;letter-spacing:.04em;margin-bottom:6px;}
-  .qty-disp{display:flex;align-items:baseline;justify-content:center;gap:6px;
-    margin-bottom:4px;background:var(--surface2);border:2px solid var(--blue-lt);
-    border-radius:var(--radius-sm);padding:8px 12px;
-    user-select:none;-webkit-user-select:none;cursor:pointer;
-    transition:background .15s,border-color .15s;}
-  .qty-disp:active{background:var(--blue-lt);border-color:var(--blue);}
-  .qty-disp.pressing{background:#d8e4ff;border-color:var(--blue);}
-  .qty-hint{font-size:9px;color:var(--text-light);text-align:center;margin-bottom:8px;
-    font-weight:500;letter-spacing:.05em;}
-  .qty-num{font-size:36px;font-weight:900;color:var(--primary);line-height:1;
-    min-width:60px;text-align:center;font-family:monospace;}
-  .qty-unit{font-size:16px;color:var(--text-mid);font-weight:500;}
-  .qty-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
-  .qbtn{padding:10px 4px;border:none;border-radius:var(--radius-xs);
-    font-size:13px;font-weight:700;font-family:var(--font);
-    cursor:pointer;-webkit-appearance:none;color:#fff;
-    transition:transform .1s;text-align:center;line-height:1.2;}
-  .qbtn:active{transform:scale(.92);}
-  .qbtn.dec{background:linear-gradient(135deg,#c03030,#8e1a10);box-shadow:0 2px 7px rgba(180,40,30,.30);}
-  .qbtn.inc{background:linear-gradient(135deg,var(--green),#076e49);box-shadow:0 2px 7px rgba(7,110,73,.30);}
+  /* qty-disp/qty-grid/qbtn CSS removed in v3.0.0 */
   .btn-row{display:flex;gap:8px;margin:8px 8px 0;padding-bottom:8px;}
   .btn{flex:1;font-family:var(--font);font-size:16px;font-weight:700;
     letter-spacing:.04em;border:none;border-radius:var(--radius);
@@ -296,9 +277,9 @@
     border:1.5px solid #f5c0c0;border-radius:10px;font-size:13px;font-weight:700;
     font-family:var(--font);cursor:pointer;-webkit-appearance:none;}
   .d-btn:active{background:#ffe0e0;}
-  #mover,#qtymover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+  #mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
     z-index:300;align-items:center;justify-content:center;}
-  #mover.on,#qtymover.on{display:flex;}
+  #mover.on{display:flex;}
   .m-box{background:var(--surface);border-radius:20px;padding:24px 22px;
     max-width:300px;width:88%;text-align:center;
     box-shadow:0 10px 36px rgba(0,0,0,.22);animation:fadeUp .25s ease;}
@@ -308,24 +289,56 @@
   .m-ok{width:100%;padding:12px;font-size:15px;font-weight:700;
     background:linear-gradient(135deg,#00b09b,#5cb85c);border:none;
     border-radius:11px;color:#fff;cursor:pointer;font-family:var(--font);-webkit-appearance:none;}
-  /* ★ [v2.4.0] 数量直接入力モーダル */
-  .qty-modal-box{background:var(--surface);border-radius:20px;padding:22px;
-    max-width:320px;width:88%;text-align:center;
-    box-shadow:0 10px 36px rgba(0,0,0,.22);animation:fadeUp .25s ease;}
-  .qty-modal-title{font-size:16px;font-weight:800;color:var(--blue-dk);margin-bottom:14px;}
-  .qty-modal-input{width:100%;font-family:monospace;font-size:36px;font-weight:800;
-    text-align:center;letter-spacing:2px;padding:14px;
+  /* ===== 登録情報モーダル（v3.0.0）===== */
+  #regmover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.60);
+    z-index:300;align-items:flex-end;justify-content:center;
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+  #regmover.on{display:flex;}
+  .reg-modal-box{background:var(--surface);border-radius:20px 20px 0 0;
+    padding:20px 16px max(env(safe-area-inset-bottom),20px);
+    width:100%;max-width:600px;
+    box-shadow:0 -6px 32px rgba(20,50,120,0.18);
+    animation:slideUp .28s cubic-bezier(.32,0,.2,1);}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .reg-modal-header{display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:14px;}
+  .reg-modal-title{font-size:16px;font-weight:700;color:var(--blue-dk);
+    display:flex;align-items:center;gap:6px;}
+  .reg-modal-title::before{content:'';display:inline-block;width:4px;height:13px;
+    background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:3px;}
+  .reg-modal-close{font-size:22px;line-height:1;background:none;border:none;
+    color:var(--text-light);cursor:pointer;padding:4px 6px;-webkit-appearance:none;}
+  .reg-qty-wrap{background:var(--surface2);border:2px solid var(--blue-lt);
+    border-radius:var(--radius-sm);padding:14px 12px 10px;margin-bottom:12px;text-align:center;}
+  .reg-qty-label{font-size:12px;font-weight:700;color:var(--text-light);
+    letter-spacing:.06em;margin-bottom:6px;}
+  .reg-qty-input{width:100%;font-family:monospace;font-size:44px;font-weight:900;
+    text-align:center;letter-spacing:3px;padding:10px 8px;
     border:2px solid var(--blue-lt);border-radius:var(--radius-xs);
-    background:var(--surface2);color:var(--text);outline:none;-webkit-appearance:none;}
-  .qty-modal-input:focus{border-color:var(--blue);
+    background:var(--surface);color:var(--primary);outline:none;-webkit-appearance:none;
+    -moz-appearance:textfield;touch-action:manipulation;}
+  .reg-qty-input::-webkit-inner-spin-button,
+  .reg-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  .reg-qty-input:focus{border-color:var(--blue);
     box-shadow:0 0 0 3px rgba(46,107,224,.18);background:var(--surface);}
-  .qty-modal-btns{display:flex;gap:8px;margin-top:14px;}
-  .qty-modal-btn{padding:13px;font-size:14px;font-weight:700;font-family:var(--font);
-    border-radius:11px;cursor:pointer;-webkit-appearance:none;border:none;}
-  .qty-modal-btn-cancel{flex:1;background:#f0f4fb;border:1.5px solid var(--blue-lt);
-    color:var(--text-mid);}
-  .qty-modal-btn-ok{flex:2;background:linear-gradient(135deg,var(--blue),var(--primary));
-    color:#fff;box-shadow:0 2px 8px rgba(46,107,224,.30);}
+  .reg-qty-unit{font-size:12px;color:var(--text-light);margin-top:4px;}
+  .reg-info-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .reg-info-chip{background:var(--surface2);border:1.5px solid var(--blue-lt);
+    border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text-mid);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+  .reg-info-chip.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-lt);}
+  .reg-modal-btns{display:flex;gap:8px;}
+  .reg-modal-btn{flex:1;font-family:var(--font);font-size:16px;font-weight:700;
+    letter-spacing:.04em;border:none;border-radius:var(--radius);
+    padding:14px 10px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    color:#fff;-webkit-appearance:none;transition:transform .12s;touch-action:manipulation;}
+  .reg-modal-btn:active{transform:scale(.95);}
+  .reg-modal-btn.reg{flex:2;background:linear-gradient(135deg,#1877f0,#0d58c0);
+    box-shadow:0 4px 16px rgba(20,80,200,.40);}
+  .reg-modal-btn.reg:disabled{opacity:.38;box-shadow:none;cursor:not-allowed;transform:none;}
+  .reg-modal-btn.rst{background:linear-gradient(135deg,var(--cyan),#2a90b0);
+    box-shadow:0 4px 14px rgba(20,120,160,.38);}
   .empty{text-align:center;padding:40px 18px;color:var(--text-light);}
   .e-ico{font-size:42px;margin-bottom:10px;}
   .e-txt{font-size:13px;line-height:1.8;}
@@ -431,56 +444,19 @@
       <button type="button" class="scanbtn srch" id="sb-srch" onclick="doOcrSrch()">&#128270; マスタ検索</button>
     </div>
 
-    <div class="card">
-      <div class="clabel">登録情報</div>
-      <button type="button" class="clr-btn" onclick="clrInfo()">クリア</button>
-      <div class="fw">
-        <label class="fl" for="zuno">図番</label>
-        <input type="text" class="fi" id="zuno"
-          placeholder="QRスキャン後に自動入力 または直接入力"
-          autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
-          oninput="onZunoIn(event)" oncompositionend="onZunoIn(event)" onblur="onZunoBlur()">
-      </div>
-      <button type="button" class="scanbtn msrch" id="sb-msrch" onclick="doManSrch()">&#128270; マスタ検索</button>
-      <div class="fw">
-        <label class="fl" for="hinmei">品名</label>
-        <textarea class="fi" id="hinmei" rows="2"
-          placeholder="マスタ検索で自動入力、または手入力"></textarea>
-      </div>
-      <div class="fw">
-        <label class="fl" for="sei">製番<span class="sub">（任意・9桁数字）</span></label>
-        <input type="text" class="fi" id="sei" placeholder="例: 012345678"
-          maxlength="9" inputmode="numeric" pattern="[0-9]*"
-          autocorrect="off" autocomplete="off"
-          oninput="onSeiInput(this, event)" oncompositionend="onSeiInput(this, event)">
-      </div>
-      <div class="fw">
-        <label class="fl" for="its">在庫区分</label>
-        <select class="fi" id="its" onchange="onItypeChange()">
-          <option value="">&#9135; 選択してください &#9135;</option>
-        </select>
-      </div>
-      <div class="qty-sec">
-        <div class="qty-lbl">数量</div>
-        <div class="qty-disp" id="qtyDisp">
-          <span class="qty-num" id="qn">0</span>
-          <span class="qty-unit" id="qu">個</span>
-        </div>
-        <div class="qty-hint">長押しで直接入力</div>
-        <div class="qty-grid">
-          <button type="button" class="qbtn dec" onclick="adjQ(-100)">-100</button>
-          <button type="button" class="qbtn dec" onclick="adjQ(-10)">-10</button>
-          <button type="button" class="qbtn dec" onclick="adjQ(-1)">-1</button>
-          <button type="button" class="qbtn inc" onclick="adjQ(1)">+1</button>
-          <button type="button" class="qbtn inc" onclick="adjQ(10)">+10</button>
-          <button type="button" class="qbtn inc" onclick="adjQ(100)">+100</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button type="button" class="btn rst" onclick="resetScan()">&#128260; リセット</button>
-      <button type="button" class="btn reg" id="regbtn" onclick="regData()" disabled>&#9989; 登録</button>
+    <!-- 登録情報は非表示フォーム（モーダルから参照） -->
+    <div style="display:none">
+      <input type="text" id="zuno"
+        autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+        oninput="onZunoIn(event)" oncompositionend="onZunoIn(event)" onblur="onZunoBlur()">
+      <button type="button" id="sb-msrch" onclick="doManSrch()"></button>
+      <textarea id="hinmei"></textarea>
+      <input type="text" id="sei" maxlength="9" inputmode="numeric" pattern="[0-9]*"
+        autocorrect="off" autocomplete="off"
+        oninput="onSeiInput(this, event)" oncompositionend="onSeiInput(this, event)">
+      <select id="its" onchange="onItypeChange()">
+        <option value="">&#9135; 選択してください &#9135;</option>
+      </select>
     </div>
   </div>
 
@@ -542,9 +518,9 @@
             　カメラ不使用時は直接入力も可能<br><br>
             <b>④ 場所・担当者・在庫区分を選択</b><br>
             　選択値は次回起動時に自動復元されます<br><br>
-            <b>⑤ 数量ボタンで入力 → 登録</b><br>
-            　数量表示を長押しで直接入力モーダルが開きます<br>
-            　端末内に保存（オフライン対応）<br><br>
+            <b>⑤ 読取後に自動で登録ポップアップが開きます</b><br>
+            　数量を直接入力 → 登録ボタンで保存（オフライン対応）<br>
+            　Enterキーでも登録可能。リセットで次スキャンへ<br><br>
             <b>⑥ 履歴タブで一括送信</b><br>
             　GAS → スプレッドシート → ASTERIA → IBM i<br>
             　送信エラーの分は未送信のまま残り、再送可能
@@ -556,7 +532,7 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v2.4.0<br>
+          <div class="s-info">DX棚卸アプリ v3.0.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span style="color:#0f9e6e;font-weight:700;">✔ Bug-1〜9 修正済み（品名ロック/担当者復元/末尾0リスト連携 等）</span></div>
@@ -578,16 +554,28 @@
   </div>
 </div>
 
-<!-- ★ [v2.4.0] 数量直接入力モーダル -->
-<div id="qtymover">
-  <div class="qty-modal-box">
-    <div class="qty-modal-title">&#128290; 数量を直接入力</div>
-    <input type="number" class="qty-modal-input" id="qtyDirectInput"
-      inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
-      autocomplete="off">
-    <div class="qty-modal-btns">
-      <button type="button" class="qty-modal-btn qty-modal-btn-cancel" onclick="closeQtyInputModal()">キャンセル</button>
-      <button type="button" class="qty-modal-btn qty-modal-btn-ok" onclick="applyQtyInput()">設定</button>
+<!-- ★ [v3.0.0] 登録情報モーダル（バーコード読取後自動表示） -->
+<div id="regmover">
+  <div class="reg-modal-box">
+    <div class="reg-modal-header">
+      <div class="reg-modal-title">登録情報の確認・数量入力</div>
+      <button type="button" class="reg-modal-close" onclick="closeRegModal()">&#10005;</button>
+    </div>
+    <!-- 品名・図番サマリー -->
+    <div class="reg-info-row" id="regModalChips"></div>
+    <!-- 数量入力 -->
+    <div class="reg-qty-wrap">
+      <div class="reg-qty-label">数 量</div>
+      <input type="number" class="reg-qty-input" id="regQtyInput"
+        inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
+        autocomplete="off"
+        onkeydown="onRegQtyKey(event)">
+      <div class="reg-qty-unit" id="regQtyUnit">個</div>
+    </div>
+    <!-- ボタン -->
+    <div class="reg-modal-btns">
+      <button type="button" class="reg-modal-btn rst" onclick="resetFromModal()">&#128260; リセット</button>
+      <button type="button" class="reg-modal-btn reg" id="regModalBtn" onclick="regData()">&#9989; 登録</button>
     </div>
   </div>
 </div>
@@ -601,7 +589,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx1fxWcObxTgKU9dNLhTYR7vOf4v-Fmt7onmXbyqPQDnVytA77EPB9_GNHDsVM2IMXv/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxDUdop2GkBBVnKd8Lz6JbtVrxb1k94EpudEeLoXsefsMBqkzO1C_-7nmoVSe1Kq59m/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -819,7 +807,6 @@ async function init() {
   setInterval(updClock, 1000); updClock();
   setMode('jan');
   initJanReader();
-  setupQtyLongPress();           /* ★ [v2.4.0] 数量長押し設定 */
   await loadAllMaster();
   restoreOp();
   await rendHist();
@@ -1401,6 +1388,13 @@ function applyCode(code, src) {
   }
 
   updManSrch(); updReg(); beep();
+
+  /* ★ [v3.0.0] JAN/QR/OCR読取後 → 登録情報モーダルを自動表示
+     マスタ未登録の場合は品名入力が必要なため自動表示しない */
+  if ((src === 'jan' || src === 'qr' || src === 'ocr') && hit) {
+    // 在庫区分が未選択でも開く（モーダル内で確認できる）
+    setTimeout(openRegModal, 120);
+  }
 }
 
 /* ============================================================
@@ -1460,73 +1454,61 @@ function onSeiInput(el, e) {
 }
 
 /* ============================================================
-   数量ボタン
+   ★ [v3.0.0] 登録情報モーダル
+   - バーコード/OCR読取成功後に自動で開く
+   - 開いた瞬間に数量入力欄にフォーカス
+   - Enterキーで登録実行
    ============================================================ */
-function adjQ(d) {
-  curQty = Math.max(0, curQty + d);
-  document.getElementById('qn').textContent = curQty;
-  updReg();
-}
+function openRegModal() {
+  var zuno   = document.getElementById('zuno').value.trim();
+  var hinmei = document.getElementById('hinmei').value.trim();
+  var dept   = document.getElementById('ds').value;
+  var pers   = document.getElementById('ps').value;
+  var itype  = document.getElementById('its').value;
 
-/* ============================================================
-   ★ [v2.4.0] 数量長押しで直接入力モーダル
-   ============================================================ */
-var qtyLongPressTimer = null;
-var qtyLongPressFired = false;
+  // サマリーチップを生成
+  var chips = document.getElementById('regModalChips');
+  chips.innerHTML = '';
+  var defs = [
+    { val: zuno,   warn: false },
+    { val: hinmei || '（品名未登録）', warn: !hinmei },
+    { val: dept,   warn: !dept },
+    { val: pers,   warn: !pers },
+    { val: itype,  warn: !itype }
+  ];
+  defs.forEach(function(d) {
+    if (!d.val) return;
+    var sp = document.createElement('span');
+    sp.className = 'reg-info-chip' + (d.warn ? ' warn' : '');
+    sp.textContent = d.val;
+    chips.appendChild(sp);
+  });
 
-function setupQtyLongPress() {
-  var el = document.getElementById('qtyDisp');
-  if (!el) return;
-
-  var startTimer = function(e) {
-    qtyLongPressFired = false;
-    el.classList.add('pressing');
-    qtyLongPressTimer = setTimeout(function() {
-      qtyLongPressFired = true;
-      el.classList.remove('pressing');
-      openQtyInputModal();
-    }, 500);
-  };
-  var clearTimer = function() {
-    if (qtyLongPressTimer) {
-      clearTimeout(qtyLongPressTimer);
-      qtyLongPressTimer = null;
-    }
-    el.classList.remove('pressing');
-  };
-
-  el.addEventListener('touchstart', startTimer, { passive: true });
-  el.addEventListener('touchend',   clearTimer);
-  el.addEventListener('touchmove',  clearTimer);
-  el.addEventListener('touchcancel',clearTimer);
-  el.addEventListener('mousedown',  startTimer);
-  el.addEventListener('mouseup',    clearTimer);
-  el.addEventListener('mouseleave', clearTimer);
-}
-
-function openQtyInputModal() {
-  var inp = document.getElementById('qtyDirectInput');
+  // 数量入力欄をリセット
+  var inp = document.getElementById('regQtyInput');
   inp.value = curQty || 0;
-  document.getElementById('qtymover').classList.add('on');
-  setTimeout(function() { inp.focus(); inp.select(); }, 100);
+  document.getElementById('regQtyUnit').textContent = curUnit || '個';
+
+  document.getElementById('regmover').classList.add('on');
+  setTimeout(function() { inp.focus(); inp.select(); }, 80);
 }
 
-function closeQtyInputModal() {
-  document.getElementById('qtymover').classList.remove('on');
+function closeRegModal() {
+  document.getElementById('regmover').classList.remove('on');
 }
 
-function applyQtyInput() {
-  var inp = document.getElementById('qtyDirectInput');
-  var val = parseInt(inp.value, 10);
-  if (isNaN(val) || val < 0) {
-    toast('0以上の数値を入力してください', 'err');
-    return;
+/* Enterキーで登録 */
+function onRegQtyKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    regData();
   }
-  curQty = val;
-  document.getElementById('qn').textContent = curQty;
-  closeQtyInputModal();
-  updReg();
-  toast('数量を ' + curQty + ' に設定しました', 'ok');
+}
+
+/* リセットボタン（モーダル内） */
+function resetFromModal() {
+  closeRegModal();
+  resetScan();
 }
 
 /* ============================================================
@@ -1537,13 +1519,24 @@ function updReg() {
   var d = document.getElementById('ds').value;
   var p = document.getElementById('ps').value;
   var t = document.getElementById('its').value;
-  document.getElementById('regbtn').disabled = !(z && d && p && t);
+  var ok = !!(z && d && p && t);
+  /* ★ [v3.0.0] モーダル内の登録ボタンを活性制御 */
+  var mb = document.getElementById('regModalBtn');
+  if (mb) mb.disabled = !ok;
 }
 
 /* ============================================================
    データ登録 → IndexedDB
    ============================================================ */
 async function regData() {
+  /* ★ [v3.0.0] 数量をモーダルの入力欄から取得 */
+  var qtyInp = document.getElementById('regQtyInput');
+  var qtyVal = parseInt(qtyInp ? qtyInp.value : '0', 10);
+  if (isNaN(qtyVal) || qtyVal < 0) {
+    toast('0以上の数値を入力してください', 'err'); return;
+  }
+  curQty = qtyVal;
+
   var now = new Date();
   var pad = function(n) { return String(n).padStart(2, '0'); };
 
@@ -1575,7 +1568,15 @@ async function regData() {
   };
   await dbP('inv', rec);
   await updBadge();
-  openMod('登録しました！', rec.zuno + '  ' + rec.quantity + rec.unit + '  ' + rec.department);
+
+  /* ★ [v3.0.0] 登録後の処理:
+     1. 登録情報モーダルを閉じる
+     2. トースト表示
+     3. フォームをリセットしてカメラプレビュー待機状態に戻る
+  */
+  closeRegModal();
+  toast('登録しました ✔  ' + rec.zuno + '  ' + rec.quantity + (rec.unit || '個'), 'ok');
+  resetScan();
 }
 
 /* ============================================================
