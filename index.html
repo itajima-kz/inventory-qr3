@@ -1356,7 +1356,6 @@ function applyCode(code, src) {
     curUnit = hit.unit || '個'; curFromMst = true;
     ze.className = 'fi filled';
     he.className = 'fi filled';
-    document.getElementById('qu').textContent = curUnit;
     toast('マスタ確認済。数量を入力して登録してください', 'ok');
   } else {
     // マスタ未登録: OCRなら元コード（ハイフン有り可）、それ以外はハイフン無し
@@ -1365,8 +1364,19 @@ function applyCode(code, src) {
     curUnit = '個'; curFromMst = false;
     ze.className = 'fi warn'; he.className = 'fi warn';
     he.placeholder = '（マスタ未登録 — 品名を手入力してください）';
-    document.getElementById('qu').textContent = '個';
     toast('マスタ未登録です。品名を手入力してください', 'info');
+  }
+
+  /* ★ [v3.0.1] JAN/QR読取時にOCR結果ボックスをクリア（③バグ修正） */
+  if (src === 'jan' || src === 'qr') {
+    var opiEl = document.getElementById('opi');
+    if (opiEl) { opiEl.value = '----'; opiEl.className = ''; }
+    var ophEl = document.getElementById('oph');
+    if (ophEl) { ophEl.textContent = 'OCR読み取り後、手修正も可能です'; }
+    var oboxEl = document.getElementById('obox');
+    if (oboxEl) { oboxEl.classList.remove('on'); }
+    var sbsEl = document.getElementById('sb-srch');
+    if (sbsEl) { sbsEl.style.display = 'none'; }
   }
 
   /* ★ [Bug-1 修正] QR/JAN後の readonly 設定
@@ -1617,8 +1627,6 @@ function resetScan() {
 
   document.getElementById('sb-msrch').style.display = 'none';
   curQty = 0; curUnit = '個'; curFromMst = false; curScanSrc = '';
-  document.getElementById('qn').textContent = '0';
-  document.getElementById('qu').textContent = '個';
   updReg();
 }
 function clrInfo() { resetScan(); toast('登録情報をクリアしました', 'ok'); }
