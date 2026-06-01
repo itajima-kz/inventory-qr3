@@ -771,7 +771,7 @@ function gasGet(action, params) {
       ctrl.abort();
       reject(new Error('タイムアウト（60秒）'));
     }, GAS_TIMEOUT_MS);
-    fetch(GAS_ENDPOINT + '?' + qs, { redirect: 'follow', signal: ctrl.signal })
+    fetch(GAS_ENDPOINT + '?' + qs, { redirect: 'follow', credentials: 'omit', signal: ctrl.signal })
       .then(function(r) { clearTimeout(timer); return r.json(); })
       .then(resolve)
       .catch(function(e) { clearTimeout(timer); reject(e); });
@@ -789,6 +789,7 @@ function gasPost(body) {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       redirect: 'follow',
+      credentials: 'omit',
       body: JSON.stringify(body),
       signal: ctrl.signal
     })
