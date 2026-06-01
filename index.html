@@ -289,31 +289,64 @@
   .m-ok{width:100%;padding:12px;font-size:15px;font-weight:700;
     background:linear-gradient(135deg,#00b09b,#5cb85c);border:none;
     border-radius:11px;color:#fff;cursor:pointer;font-family:var(--font);-webkit-appearance:none;}
-  /* ===== 登録情報モーダル（v3.0.0）===== */
+  /* ===== 登録情報モーダル（v3.1.0）===== */
   #regmover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.60);
     z-index:300;align-items:flex-end;justify-content:center;
     -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
   #regmover.on{display:flex;}
   .reg-modal-box{background:var(--surface);border-radius:20px 20px 0 0;
-    padding:20px 16px max(env(safe-area-inset-bottom),20px);
+    padding:0 0 max(env(safe-area-inset-bottom),12px);
     width:100%;max-width:600px;
     box-shadow:0 -6px 32px rgba(20,50,120,0.18);
-    animation:slideUp .28s cubic-bezier(.32,0,.2,1);}
+    animation:slideUp .28s cubic-bezier(.32,0,.2,1);
+    max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-  .reg-modal-header{display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:14px;}
-  .reg-modal-title{font-size:16px;font-weight:700;color:var(--blue-dk);
+  /* ヘッダー */
+  .reg-modal-header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    border-radius:20px 20px 0 0;
+    padding:14px 16px 12px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:1;}
+  .reg-modal-title{font-size:15px;font-weight:700;color:#fff;
     display:flex;align-items:center;gap:6px;}
   .reg-modal-title::before{content:'';display:inline-block;width:4px;height:13px;
-    background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:3px;}
-  .reg-modal-close{font-size:22px;line-height:1;background:none;border:none;
-    color:var(--text-light);cursor:pointer;padding:4px 6px;-webkit-appearance:none;}
+    background:rgba(255,255,255,.6);border-radius:3px;}
+  .reg-modal-close{font-size:20px;line-height:1;background:rgba(255,255,255,.18);
+    border:none;color:#fff;cursor:pointer;padding:5px 9px;border-radius:8px;
+    -webkit-appearance:none;touch-action:manipulation;}
+  /* ボディ */
+  .reg-modal-body{padding:14px 16px 8px;}
+  /* 場所・担当者バッジ行 */
+  .reg-op-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .reg-op-badge{background:linear-gradient(135deg,var(--primary),var(--blue));
+    color:#fff;font-size:12px;font-weight:700;padding:5px 12px;
+    border-radius:20px;letter-spacing:.04em;}
+  .reg-op-badge.empty{background:var(--warn);color:#fff;}
+  /* フォーム行（ラベル横並び） */
+  .reg-form-row{display:flex;align-items:flex-start;gap:10px;
+    border-bottom:1px solid var(--blue-lt);padding:9px 0;}
+  .reg-form-row:last-of-type{border-bottom:none;}
+  .reg-form-label{font-size:11px;font-weight:700;color:var(--text-light);
+    min-width:46px;padding-top:3px;letter-spacing:.04em;flex-shrink:0;}
+  .reg-form-val{flex:1;font-size:14px;font-weight:500;color:var(--text);
+    line-height:1.5;word-break:break-all;}
+  .reg-form-val.warn{color:var(--warn);}
+  .reg-form-val.filled{color:var(--filled);}
+  /* 製番（OCR時のみ入力可） */
+  .reg-sei-input{width:100%;font-size:14px;font-weight:500;color:var(--text);
+    border:none;border-bottom:2px solid var(--blue-lt);background:transparent;
+    padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
+    letter-spacing:.08em;}
+  .reg-sei-input:focus{border-bottom-color:var(--blue);}
+  /* 数量エリア */
   .reg-qty-wrap{background:var(--surface2);border:2px solid var(--blue-lt);
-    border-radius:var(--radius-sm);padding:14px 12px 10px;margin-bottom:12px;text-align:center;}
+    border-radius:var(--radius-sm);padding:10px 12px 8px;margin:10px 0 12px;
+    display:flex;align-items:center;gap:10px;}
   .reg-qty-label{font-size:12px;font-weight:700;color:var(--text-light);
-    letter-spacing:.06em;margin-bottom:6px;}
-  .reg-qty-input{width:100%;font-family:monospace;font-size:44px;font-weight:900;
-    text-align:center;letter-spacing:3px;padding:10px 8px;
+    letter-spacing:.06em;flex-shrink:0;min-width:34px;}
+  .reg-qty-input{flex:1;font-family:monospace;font-size:40px;font-weight:900;
+    text-align:center;letter-spacing:3px;padding:6px 8px;
     border:2px solid var(--blue-lt);border-radius:var(--radius-xs);
     background:var(--surface);color:var(--primary);outline:none;-webkit-appearance:none;
     -moz-appearance:textfield;touch-action:manipulation;}
@@ -321,14 +354,11 @@
   .reg-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   .reg-qty-input:focus{border-color:var(--blue);
     box-shadow:0 0 0 3px rgba(46,107,224,.18);background:var(--surface);}
-  .reg-qty-unit{font-size:12px;color:var(--text-light);margin-top:4px;}
-  .reg-info-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-  .reg-info-chip{background:var(--surface2);border:1.5px solid var(--blue-lt);
-    border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text-mid);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
-  .reg-info-chip.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-lt);}
-  .reg-modal-btns{display:flex;gap:8px;}
-  .reg-modal-btn{flex:1;font-family:var(--font);font-size:16px;font-weight:700;
+  .reg-qty-unit{font-size:13px;color:var(--text-mid);font-weight:700;
+    flex-shrink:0;min-width:20px;}
+  /* ボタン行 */
+  .reg-modal-btns{display:flex;gap:8px;padding:0 16px 4px;}
+  .reg-modal-btn{flex:1;font-family:var(--font);font-size:15px;font-weight:700;
     letter-spacing:.04em;border:none;border-radius:var(--radius);
     padding:14px 10px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;gap:6px;
@@ -337,7 +367,7 @@
   .reg-modal-btn.reg{flex:2;background:linear-gradient(135deg,#1877f0,#0d58c0);
     box-shadow:0 4px 16px rgba(20,80,200,.40);}
   .reg-modal-btn.reg:disabled{opacity:.38;box-shadow:none;cursor:not-allowed;transform:none;}
-  .reg-modal-btn.rst{background:linear-gradient(135deg,var(--cyan),#2a90b0);
+  .reg-modal-btn.clr{background:linear-gradient(135deg,var(--cyan),#2a90b0);
     box-shadow:0 4px 14px rgba(20,120,160,.38);}
   .empty{text-align:center;padding:40px 18px;color:var(--text-light);}
   .e-ico{font-size:42px;margin-bottom:10px;}
@@ -532,7 +562,7 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.0.0<br>
+          <div class="s-info">DX棚卸アプリ v3.1.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span style="color:#0f9e6e;font-weight:700;">✔ Bug-1〜9 修正済み（品名ロック/担当者復元/末尾0リスト連携 等）</span></div>
@@ -554,27 +584,47 @@
   </div>
 </div>
 
-<!-- ★ [v3.0.0] 登録情報モーダル（バーコード読取後自動表示） -->
+<!-- ★ [v3.1.0] 登録情報モーダル（バーコード読取後自動表示） -->
 <div id="regmover">
   <div class="reg-modal-box">
     <div class="reg-modal-header">
       <div class="reg-modal-title">登録情報の確認・数量入力</div>
       <button type="button" class="reg-modal-close" onclick="closeRegModal()">&#10005;</button>
     </div>
-    <!-- 品名・図番サマリー -->
-    <div class="reg-info-row" id="regModalChips"></div>
-    <!-- 数量入力 -->
-    <div class="reg-qty-wrap">
-      <div class="reg-qty-label">数 量</div>
-      <input type="number" class="reg-qty-input" id="regQtyInput"
-        inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
-        autocomplete="off"
-        onkeydown="onRegQtyKey(event)">
-      <div class="reg-qty-unit" id="regQtyUnit">個</div>
+    <div class="reg-modal-body">
+      <!-- 場所・担当者（値のみ、ラベルなし） -->
+      <div class="reg-op-row" id="regOpRow"></div>
+      <!-- フォーム行：図番 -->
+      <div class="reg-form-row">
+        <div class="reg-form-label">図番</div>
+        <div class="reg-form-val" id="regFvZuno"></div>
+      </div>
+      <!-- フォーム行：品名（2行表示） -->
+      <div class="reg-form-row">
+        <div class="reg-form-label">品名</div>
+        <div class="reg-form-val" id="regFvHinmei" style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;"></div>
+      </div>
+      <!-- フォーム行：製番（OCR時のみ入力可、それ以外は非表示） -->
+      <div class="reg-form-row" id="regSeiRow" style="display:none">
+        <div class="reg-form-label">製番</div>
+        <input type="text" class="reg-sei-input" id="regSeiInput"
+          maxlength="9" inputmode="numeric" pattern="[0-9]*"
+          placeholder="任意・9桁数字"
+          autocomplete="off" autocorrect="off">
+      </div>
+      <!-- 数量入力 -->
+      <div class="reg-qty-wrap">
+        <div class="reg-qty-label">数量</div>
+        <input type="number" class="reg-qty-input" id="regQtyInput"
+          inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
+          autocomplete="off"
+          onkeydown="onRegQtyKey(event)">
+        <div class="reg-qty-unit" id="regQtyUnit">個</div>
+      </div>
     </div>
     <!-- ボタン -->
     <div class="reg-modal-btns">
-      <button type="button" class="reg-modal-btn rst" onclick="resetFromModal()">&#128260; リセット</button>
+      <button type="button" class="reg-modal-btn clr" onclick="clearRegModal()">&#10006; クリア</button>
       <button type="button" class="reg-modal-btn reg" id="regModalBtn" onclick="regData()">&#9989; 登録</button>
     </div>
   </div>
@@ -1475,27 +1525,39 @@ function openRegModal() {
   var hinmei = document.getElementById('hinmei').value.trim();
   var dept   = document.getElementById('ds').value;
   var pers   = document.getElementById('ps').value;
-  var itype  = document.getElementById('its').value;
 
-  // サマリーチップを生成
-  var chips = document.getElementById('regModalChips');
-  chips.innerHTML = '';
-  var defs = [
-    { val: zuno,   warn: false },
-    { val: hinmei || '（品名未登録）', warn: !hinmei },
-    { val: dept,   warn: !dept },
-    { val: pers,   warn: !pers },
-    { val: itype,  warn: !itype }
-  ];
-  defs.forEach(function(d) {
-    if (!d.val) return;
+  /* --- 場所・担当者バッジ --- */
+  var opRow = document.getElementById('regOpRow');
+  opRow.innerHTML = '';
+  [dept, pers].forEach(function(v) {
     var sp = document.createElement('span');
-    sp.className = 'reg-info-chip' + (d.warn ? ' warn' : '');
-    sp.textContent = d.val;
-    chips.appendChild(sp);
+    sp.className = 'reg-op-badge' + (v ? '' : ' empty');
+    sp.textContent = v || '未選択';
+    opRow.appendChild(sp);
   });
 
-  // 数量入力欄をリセット
+  /* --- 図番 --- */
+  var fvZ = document.getElementById('regFvZuno');
+  fvZ.textContent = zuno || '（未入力）';
+  fvZ.className = 'reg-form-val' + (zuno ? ' filled' : ' warn');
+
+  /* --- 品名（2行） --- */
+  var fvH = document.getElementById('regFvHinmei');
+  fvH.textContent = hinmei || '（マスタ未登録）';
+  fvH.className = 'reg-form-val' + (hinmei ? ' filled' : ' warn');
+
+  /* --- 製番行: OCRのみ表示・入力可 --- */
+  var seiRow = document.getElementById('regSeiRow');
+  var seiInp = document.getElementById('regSeiInput');
+  if (curScanSrc === 'ocr') {
+    seiRow.style.display = '';
+    seiInp.value = document.getElementById('sei').value || '';
+  } else {
+    seiRow.style.display = 'none';
+    seiInp.value = '';
+  }
+
+  /* --- 数量 --- */
   var inp = document.getElementById('regQtyInput');
   inp.value = curQty || 0;
   document.getElementById('regQtyUnit').textContent = curUnit || '個';
@@ -1516,10 +1578,17 @@ function onRegQtyKey(e) {
   }
 }
 
-/* リセットボタン（モーダル内） */
-function resetFromModal() {
-  closeRegModal();
-  resetScan();
+/* クリアボタン（モーダル内項目のみクリア） */
+function clearRegModal() {
+  /* 数量をゼロに */
+  var inp = document.getElementById('regQtyInput');
+  if (inp) { inp.value = 0; inp.focus(); inp.select(); }
+  /* 製番入力欄クリア（OCR時のみ表示） */
+  var seiInp = document.getElementById('regSeiInput');
+  if (seiInp) seiInp.value = '';
+  /* 本体側のsei欄も合わせてクリア */
+  var seiMain = document.getElementById('sei');
+  if (seiMain) seiMain.value = '';
 }
 
 /* ============================================================
@@ -1561,11 +1630,23 @@ async function regData() {
       size = masterData[i].size || ''; break;
     }
   }
+  /* ★ [v3.1.0] OCR時はモーダルの製番入力欄から取得、それ以外は元のsei欄 */
+  var seiVal = '';
+  if (curScanSrc === 'ocr') {
+    var regSeiEl = document.getElementById('regSeiInput');
+    seiVal = regSeiEl ? regSeiEl.value.trim() : '';
+    /* 本体側のsei欄にも同期 */
+    var seiMainEl = document.getElementById('sei');
+    if (seiMainEl) seiMainEl.value = seiVal;
+  } else {
+    seiVal = document.getElementById('sei').value.trim();
+  }
+
   var rec = {
     date:          now.getFullYear() + '/' + pad(now.getMonth()+1) + '/' + pad(now.getDate()),
     time:          pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
     zuno:          zuno,
-    seiban:        document.getElementById('sei').value.trim(),
+    seiban:        seiVal,
     hinmei:        document.getElementById('hinmei').value.trim(),
     size:          size,
     quantity:      curQty,
