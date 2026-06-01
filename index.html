@@ -289,7 +289,7 @@
   .m-ok{width:100%;padding:12px;font-size:15px;font-weight:700;
     background:linear-gradient(135deg,#00b09b,#5cb85c);border:none;
     border-radius:11px;color:#fff;cursor:pointer;font-family:var(--font);-webkit-appearance:none;}
-  /* ===== 登録情報モーダル（v3.1.0）===== */
+  /* ===== 登録情報モーダル（v3.1.2）===== */
   #regmover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.60);
     z-index:300;align-items:flex-end;justify-content:center;
     -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
@@ -301,63 +301,85 @@
     animation:slideUp .28s cubic-bezier(.32,0,.2,1);
     max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-  /* ヘッダー */
+  /* ヘッダー：クリアボタンを右端に配置 */
   .reg-modal-header{
     background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     border-radius:20px 20px 0 0;
-    padding:14px 16px 12px;
+    padding:13px 16px 11px;
     display:flex;align-items:center;justify-content:space-between;
+    gap:8px;
     position:sticky;top:0;z-index:1;}
   .reg-modal-title{font-size:15px;font-weight:700;color:#fff;
-    display:flex;align-items:center;gap:6px;}
-  .reg-modal-title::before{content:'';display:inline-block;width:4px;height:13px;
-    background:rgba(255,255,255,.6);border-radius:3px;}
-  .reg-modal-close{font-size:20px;line-height:1;background:rgba(255,255,255,.18);
-    border:none;color:#fff;cursor:pointer;padding:5px 9px;border-radius:8px;
+    display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
+  .reg-modal-title::before{content:'';display:inline-block;width:4px;height:14px;
+    background:rgba(255,255,255,.6);border-radius:3px;flex-shrink:0;}
+  /* ヘッダー右端：クリアボタン + 閉じるボタン */
+  .reg-hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .reg-modal-close{font-size:18px;line-height:1;background:rgba(255,255,255,.18);
+    border:none;color:#fff;cursor:pointer;padding:5px 8px;border-radius:8px;
     -webkit-appearance:none;touch-action:manipulation;}
+  .reg-hdr-clr{font-size:12px;font-weight:700;font-family:var(--font);
+    background:rgba(255,255,255,.20);border:1.5px solid rgba(255,255,255,.50);
+    color:#fff;cursor:pointer;padding:5px 10px;border-radius:8px;
+    -webkit-appearance:none;touch-action:manipulation;letter-spacing:.04em;}
+  .reg-hdr-clr:active{background:rgba(255,255,255,.35);}
   /* ボディ */
   .reg-modal-body{padding:14px 16px 8px;}
-  /* 場所・担当者バッジ行 */
-  .reg-op-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
-  .reg-op-badge{background:linear-gradient(135deg,var(--primary),var(--blue));
-    color:#fff;font-size:12px;font-weight:700;padding:5px 12px;
-    border-radius:20px;letter-spacing:.04em;}
-  .reg-op-badge.empty{background:var(--warn);color:#fff;}
+  /* 場所・担当者バッジ行 ②幅を拡大 */
+  .reg-op-row{display:flex;gap:8px;margin-bottom:14px;}
+  .reg-op-badge{
+    flex:1;                /* ② クリアボタン幅を除いた幅を二分 */
+    background:linear-gradient(135deg,var(--primary),var(--blue));
+    color:#fff;font-size:15px;font-weight:700;
+    padding:8px 10px;border-radius:20px;
+    letter-spacing:.04em;text-align:center;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .reg-op-badge.empty{background:var(--warn);}
   /* フォーム行（ラベル横並び） */
-  .reg-form-row{display:flex;align-items:flex-start;gap:10px;
-    border-bottom:1px solid var(--blue-lt);padding:9px 0;}
+  .reg-form-row{display:flex;align-items:flex-start;gap:12px;
+    border-bottom:1px solid var(--blue-lt);padding:11px 0;}
   .reg-form-row:last-of-type{border-bottom:none;}
-  .reg-form-label{font-size:11px;font-weight:700;color:var(--text-light);
-    min-width:46px;padding-top:3px;letter-spacing:.04em;flex-shrink:0;}
-  .reg-form-val{flex:1;font-size:14px;font-weight:500;color:var(--text);
-    line-height:1.5;word-break:break-all;}
+  /* ③ ラベル文字サイズUP */
+  .reg-form-label{font-size:14px;font-weight:700;color:var(--text-light);
+    min-width:44px;padding-top:2px;letter-spacing:.04em;flex-shrink:0;}
+  /* ④ 値文字サイズUP */
+  .reg-form-val{flex:1;font-size:17px;font-weight:600;color:var(--text);
+    line-height:1.55;word-break:break-all;}
   .reg-form-val.warn{color:var(--warn);}
   .reg-form-val.filled{color:var(--filled);}
+  /* ④ 品名：2行固定 */
+  .reg-form-val.hinmei{
+    display:-webkit-box;-webkit-box-orient:vertical;
+    -webkit-line-clamp:2;overflow:hidden;
+    min-height:calc(1.55em * 2);}   /* 2行分の高さを最低確保 */
   /* 製番（OCR時のみ入力可） */
-  .reg-sei-input{width:100%;font-size:14px;font-weight:500;color:var(--text);
+  .reg-sei-input{width:100%;font-size:16px;font-weight:500;color:var(--text);
     border:none;border-bottom:2px solid var(--blue-lt);background:transparent;
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.08em;}
   .reg-sei-input:focus{border-bottom-color:var(--blue);}
-  /* 数量エリア */
+  /* ⑤ 数量エリア：入力欄が見切れない構成 */
   .reg-qty-wrap{background:var(--surface2);border:2px solid var(--blue-lt);
-    border-radius:var(--radius-sm);padding:10px 12px 8px;margin:10px 0 12px;
-    display:flex;align-items:center;gap:10px;}
-  .reg-qty-label{font-size:12px;font-weight:700;color:var(--text-light);
-    letter-spacing:.06em;flex-shrink:0;min-width:34px;}
-  .reg-qty-input{flex:1;font-family:monospace;font-size:40px;font-weight:900;
-    text-align:center;letter-spacing:3px;padding:6px 8px;
+    border-radius:var(--radius-sm);padding:10px 14px;margin:10px 0 12px;}
+  .reg-qty-inner{display:flex;align-items:center;gap:10px;}
+  /* ③ 数量ラベルもUP */
+  .reg-qty-label{font-size:14px;font-weight:700;color:var(--text-light);
+    letter-spacing:.06em;flex-shrink:0;width:44px;}
+  .reg-qty-input{
+    flex:1;min-width:0;                /* ⑤ flex:1+min-width:0 で見切れ防止 */
+    font-family:monospace;font-size:42px;font-weight:900;
+    text-align:center;letter-spacing:2px;padding:6px 4px;
     border:2px solid var(--blue-lt);border-radius:var(--radius-xs);
     background:var(--surface);color:var(--primary);outline:none;-webkit-appearance:none;
-    -moz-appearance:textfield;touch-action:manipulation;}
+    -moz-appearance:textfield;touch-action:manipulation;width:0;}/* width:0でflex基準リセット */
   .reg-qty-input::-webkit-inner-spin-button,
   .reg-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   .reg-qty-input:focus{border-color:var(--blue);
     box-shadow:0 0 0 3px rgba(46,107,224,.18);background:var(--surface);}
-  .reg-qty-unit{font-size:13px;color:var(--text-mid);font-weight:700;
-    flex-shrink:0;min-width:20px;}
-  /* ボタン行 */
-  .reg-modal-btns{display:flex;gap:8px;padding:0 16px 4px;}
+  .reg-qty-unit{font-size:15px;color:var(--text-mid);font-weight:700;
+    flex-shrink:0;width:24px;text-align:left;}
+  /* ボタン行：リセット（左）+ 登録（右） */
+  .reg-modal-btns{display:flex;gap:8px;padding:4px 16px 4px;}
   .reg-modal-btn{flex:1;font-family:var(--font);font-size:15px;font-weight:700;
     letter-spacing:.04em;border:none;border-radius:var(--radius);
     padding:14px 10px;cursor:pointer;
@@ -367,7 +389,7 @@
   .reg-modal-btn.reg{flex:2;background:linear-gradient(135deg,#1877f0,#0d58c0);
     box-shadow:0 4px 16px rgba(20,80,200,.40);}
   .reg-modal-btn.reg:disabled{opacity:.38;box-shadow:none;cursor:not-allowed;transform:none;}
-  .reg-modal-btn.clr{background:linear-gradient(135deg,var(--cyan),#2a90b0);
+  .reg-modal-btn.rst{background:linear-gradient(135deg,var(--cyan),#2a90b0);
     box-shadow:0 4px 14px rgba(20,120,160,.38);}
   .empty{text-align:center;padding:40px 18px;color:var(--text-light);}
   .e-ico{font-size:42px;margin-bottom:10px;}
@@ -562,7 +584,7 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.1.0<br>
+          <div class="s-info">DX棚卸アプリ v3.1.2<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span style="color:#0f9e6e;font-weight:700;">✔ Bug-1〜9 修正済み（品名ロック/担当者復元/末尾0リスト連携 等）</span></div>
@@ -584,27 +606,31 @@
   </div>
 </div>
 
-<!-- ★ [v3.1.0] 登録情報モーダル（バーコード読取後自動表示） -->
+<!-- ★ [v3.1.2] 登録情報モーダル（バーコード読取後自動表示） -->
 <div id="regmover">
   <div class="reg-modal-box">
     <div class="reg-modal-header">
       <div class="reg-modal-title">登録情報の確認・数量入力</div>
-      <button type="button" class="reg-modal-close" onclick="closeRegModal()">&#10005;</button>
+      <!-- ① クリアボタンを右上に配置 -->
+      <div class="reg-hdr-right">
+        <button type="button" class="reg-hdr-clr" onclick="clearRegModal()">&#10006; クリア</button>
+        <button type="button" class="reg-modal-close" onclick="closeRegModal()">&#10005;</button>
+      </div>
     </div>
     <div class="reg-modal-body">
-      <!-- 場所・担当者（値のみ、ラベルなし） -->
+      <!-- ② 場所・担当者（値のみ・幅を二分） -->
       <div class="reg-op-row" id="regOpRow"></div>
       <!-- フォーム行：図番 -->
       <div class="reg-form-row">
         <div class="reg-form-label">図番</div>
         <div class="reg-form-val" id="regFvZuno"></div>
       </div>
-      <!-- フォーム行：品名（2行表示） -->
+      <!-- フォーム行：品名（④ 2行固定） -->
       <div class="reg-form-row">
         <div class="reg-form-label">品名</div>
-        <div class="reg-form-val" id="regFvHinmei" style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;"></div>
+        <div class="reg-form-val hinmei" id="regFvHinmei"></div>
       </div>
-      <!-- フォーム行：製番（OCR時のみ入力可、それ以外は非表示） -->
+      <!-- フォーム行：製番（OCR時のみ） -->
       <div class="reg-form-row" id="regSeiRow" style="display:none">
         <div class="reg-form-label">製番</div>
         <input type="text" class="reg-sei-input" id="regSeiInput"
@@ -612,19 +638,21 @@
           placeholder="任意・9桁数字"
           autocomplete="off" autocorrect="off">
       </div>
-      <!-- 数量入力 -->
+      <!-- ⑤ 数量入力：inner ラッパーで見切れ防止 -->
       <div class="reg-qty-wrap">
-        <div class="reg-qty-label">数量</div>
-        <input type="number" class="reg-qty-input" id="regQtyInput"
-          inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
-          autocomplete="off"
-          onkeydown="onRegQtyKey(event)">
-        <div class="reg-qty-unit" id="regQtyUnit">個</div>
+        <div class="reg-qty-inner">
+          <div class="reg-qty-label">数量</div>
+          <input type="number" class="reg-qty-input" id="regQtyInput"
+            inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
+            autocomplete="off"
+            onkeydown="onRegQtyKey(event)">
+          <div class="reg-qty-unit" id="regQtyUnit">個</div>
+        </div>
       </div>
     </div>
-    <!-- ボタン -->
+    <!-- ① ボタン：リセット（全リセット）＋ 登録 -->
     <div class="reg-modal-btns">
-      <button type="button" class="reg-modal-btn clr" onclick="clearRegModal()">&#10006; クリア</button>
+      <button type="button" class="reg-modal-btn rst" onclick="resetFromModal()">&#128260; リセット</button>
       <button type="button" class="reg-modal-btn reg" id="regModalBtn" onclick="regData()">&#9989; 登録</button>
     </div>
   </div>
@@ -1578,7 +1606,13 @@ function onRegQtyKey(e) {
   }
 }
 
-/* クリアボタン（モーダル内項目のみクリア） */
+/* ① リセットボタン：モーダルを閉じて全リセット → メイン画面に戻る */
+function resetFromModal() {
+  closeRegModal();
+  resetScan();
+}
+
+/* ① クリアボタン（ヘッダー右上）：モーダル内の入力可能項目のみクリア */
 function clearRegModal() {
   /* 数量をゼロに */
   var inp = document.getElementById('regQtyInput');
