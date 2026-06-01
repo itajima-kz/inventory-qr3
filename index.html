@@ -119,7 +119,7 @@
   .fi.filled{background:var(--filled-lt);border-color:var(--filled);color:var(--filled);font-weight:700;}
   .fi.warn{background:var(--warn-lt);border-color:var(--warn);color:var(--warn);}
   textarea.fi{resize:none;line-height:1.45;min-height:38px;word-break:break-all;white-space:pre-wrap;overflow-wrap:break-word;}
-  select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%232e6be0' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  select.fi{
     background-repeat:no-repeat;background-position:right 10px center;
     padding-right:30px;cursor:pointer;}
   select.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,107,224,.14);}
@@ -374,13 +374,12 @@
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     resize:none;line-height:1.45;min-height:2.9em;}
   .reg-hinmei-input:focus{border-bottom-color:var(--blue);}
-  /* 在庫区分セレクト（モーダル内） */
+  /* 在庫区分セレクト（モーダル内）*/
   .reg-its-sel{width:100%;font-size:16px;font-weight:500;font-family:var(--font);
     color:var(--text);background:var(--surface);
     border:none;border-bottom:2px solid var(--blue-lt);
-    padding:4px 4px 4px 2px;outline:none;-webkit-appearance:none;appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7a99' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 4px center;padding-right:22px;}
+    padding:4px 4px 4px 2px;outline:none;
+    -webkit-appearance:auto;appearance:auto;}
   .reg-its-sel:focus{border-bottom-color:var(--blue);}
   .reg-its-sel.warn{border-bottom-color:var(--warn);}
   /* ⑤ 数量エリア：入力欄が見切れない構成 */
