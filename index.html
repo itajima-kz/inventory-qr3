@@ -161,6 +161,47 @@
   #flash{position:absolute;inset:0;background:rgba(46,107,224,.5);
     border-radius:var(--radius-sm);opacity:0;pointer-events:none;
     transition:opacity .08s;z-index:3;}
+  /* ★ [v3.3.0] カメラコントロールオーバーレイ（ズーム・ライト） */
+  #cam-ctrl{position:absolute;bottom:8px;left:0;right:0;z-index:6;
+    display:none;flex-direction:column;gap:6px;padding:0 10px;}
+  #cam-ctrl.on{display:flex;}
+  .cam-ctrl-row{display:flex;align-items:center;gap:8px;}
+  .cc-icon{font-size:14px;color:rgba(255,255,255,.8);flex-shrink:0;width:18px;text-align:center;}
+  /* ズームスライダー */
+  #zoom-slider{flex:1;-webkit-appearance:none;appearance:none;
+    height:4px;border-radius:4px;
+    background:rgba(255,255,255,.25);outline:none;cursor:pointer;}
+  #zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+    border-radius:50%;background:var(--cyan);border:2px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;}
+  #zoom-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
+    background:var(--cyan);border:2px solid #fff;cursor:pointer;}
+  .zoom-val{font-size:11px;font-weight:700;color:var(--cyan);
+    min-width:30px;text-align:right;flex-shrink:0;}
+  /* ライト・バッテリーモードボタン */
+  .cc-btn{padding:5px 10px;border:1.5px solid rgba(255,255,255,.4);
+    border-radius:8px;background:rgba(0,0,0,.45);color:#fff;
+    font-size:12px;font-weight:700;font-family:var(--font);
+    cursor:pointer;-webkit-appearance:none;touch-action:manipulation;
+    transition:background .12s;white-space:nowrap;}
+  .cc-btn:active{background:rgba(255,255,255,.25);}
+  .cc-btn.on{background:rgba(255,220,0,.35);border-color:#ffd700;color:#ffd700;}
+  .cc-btn.bat{border-color:rgba(64,168,200,.7);color:var(--cyan);}
+  .cc-btn.bat.on{background:rgba(64,168,200,.25);border-color:var(--cyan);color:var(--cyan);}
+  /* ズームボタン（スライダーが非対応デバイス向け補助） */
+  .zoom-btn{width:34px;height:34px;border:1.5px solid rgba(255,255,255,.4);
+    border-radius:50%;background:rgba(0,0,0,.45);color:#fff;
+    font-size:18px;font-weight:700;font-family:var(--font);
+    cursor:pointer;-webkit-appearance:none;touch-action:manipulation;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .12s;flex-shrink:0;}
+  .zoom-btn:active{background:rgba(255,255,255,.25);}
+  /* バッテリー節約中インジケーター */
+  .bat-badge{position:absolute;top:6px;right:8px;z-index:7;
+    font-size:10px;font-weight:700;color:var(--cyan);
+    background:rgba(0,0,0,.55);padding:2px 6px;border-radius:6px;
+    display:none;pointer-events:none;}
+  .bat-badge.on{display:block;}
   .cam-ph{width:100%;background:#1a1a2e;border-radius:var(--radius-sm);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:26px 16px;margin-bottom:7px;gap:8px;}
@@ -506,6 +547,25 @@
         <div id="sline"></div>
         <div id="ocrg"></div>
         <div id="flash"></div>
+        <!-- ★ [v3.3.0] バッテリー節約インジケーター -->
+        <div class="bat-badge" id="bat-badge">🔋 省電力中</div>
+        <!-- ★ [v3.3.0] カメラコントロールオーバーレイ -->
+        <div id="cam-ctrl">
+          <!-- ズーム行 -->
+          <div class="cam-ctrl-row">
+            <button type="button" class="zoom-btn" id="zoom-out" onclick="zoomStep(-1)">－</button>
+            <span class="cc-icon">🔍</span>
+            <input type="range" id="zoom-slider" min="1" max="8" step="0.1" value="1"
+              oninput="onZoomSlider(this.value)" ontouchstart="event.stopPropagation()">
+            <span class="zoom-val" id="zoom-val">×1.0</span>
+            <button type="button" class="zoom-btn" id="zoom-in" onclick="zoomStep(1)">＋</button>
+          </div>
+          <!-- ライト・バッテリー行 -->
+          <div class="cam-ctrl-row" style="justify-content:flex-end;gap:6px;">
+            <button type="button" class="cc-btn" id="torch-btn" onclick="toggleTorch()">🔦 ライト</button>
+            <button type="button" class="cc-btn bat" id="bat-btn" onclick="toggleBatMode()">🔋 省電力</button>
+          </div>
+        </div>
       </div>
       <div class="cam-ph" id="camph">
         <div class="cam-ph-ico" id="ph-ico">&#128247;</div>
@@ -612,10 +672,10 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.2.0<br>
+          <div class="s-info">DX棚卸アプリ v3.3.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.2.0: AudioCtxリーク修正 / GASリトライ / localStorageキャッシュ / ダブルタップ抑制</span></div>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.3.0: ズーム/ライト追加 / 省電力モード / 数量初期値空欄化</span></div>
         </div>
       </div>
     </div>
@@ -692,7 +752,7 @@
         <div class="reg-qty-inner">
           <div class="reg-qty-label">数量</div>
           <input type="number" class="reg-qty-input" id="regQtyInput"
-            inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="0"
+            inputmode="numeric" pattern="[0-9]*" min="0" step="1" placeholder="0"
             autocomplete="off"
             onkeydown="onRegQtyKey(event)">
           <div class="reg-qty-unit" id="regQtyUnit">個</div>
@@ -750,6 +810,21 @@ var lastCode   = '';
 var lastCodeAt = 0;
 var _setCamH   = null;
 var COOLDOWN   = 2200;
+
+/* ★ [v3.3.0] カメラコントロール状態 */
+var _curZoom      = 1.0;   /* 現在のズーム倍率 */
+var _zoomMin      = 1.0;
+var _zoomMax      = 8.0;
+var _hwZoom       = false; /* ハードウェアズーム対応フラグ */
+var _torchOn      = false; /* ライト状態 */
+var _torchSupport = false; /* ライト対応フラグ */
+var _batMode      = false; /* 省電力モードフラグ */
+/* 省電力モード: 解像度・フレームレートを下げる */
+var CAM_CONSTRAINTS_NORMAL = { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 }, frameRate: { ideal: 30, max: 30 } };
+var CAM_CONSTRAINTS_BAT    = { facingMode: { ideal: 'environment' }, width: { ideal: 640  }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 15 } };
+/* スキャンタイマー間隔(ms): 通常/省電力 */
+var SCAN_INTERVAL_NORMAL = 200;
+var SCAN_INTERVAL_BAT    = 350;
 
 /* ============================================================
    ★ [Bug-9] 末尾0・末尾空白除去（末尾0リスト連携版）
@@ -1256,8 +1331,9 @@ function setMode(m) {
     document.getElementById('sb-cap').style.display = m === 'ocr' ? 'flex' : 'none';
     clearInterval(qrTimer);  qrTimer  = null;
     clearInterval(janTimer); janTimer = null;
-    if (m === 'qr')  qrTimer  = setInterval(scanQR,  180);
-    if (m === 'jan') janTimer = setInterval(scanJAN, 180);
+    var interval = _batMode ? SCAN_INTERVAL_BAT : SCAN_INTERVAL_NORMAL;
+    if (m === 'qr')  qrTimer  = setInterval(scanQR,  interval);
+    if (m === 'jan') janTimer = setInterval(scanJAN, interval);
   }
 }
 
@@ -1278,9 +1354,9 @@ async function startCam() {
     toast('カメラ非対応またはHTTPS環境が必要です', 'err'); return;
   }
   try {
-    camStr_ = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 } }
-    });
+    /* ★ [v3.3.0] 省電力モードで解像度・フレームレートを切替 */
+    var constraints = _batMode ? CAM_CONSTRAINTS_BAT : CAM_CONSTRAINTS_NORMAL;
+    camStr_ = await navigator.mediaDevices.getUserMedia({ video: constraints });
     var v = document.getElementById('cv');
     v.srcObject = camStr_;
     await v.play();
@@ -1292,6 +1368,10 @@ async function startCam() {
     camOn = true;
     updGuide();
     updManSrch();
+
+    /* ★ [v3.3.0] ハードウェアズーム・ライト対応確認 */
+    _initCamCapabilities();
+
     var setH = function() {
       var wrap = document.getElementById('cama');
       if (!wrap) return;
@@ -1314,8 +1394,11 @@ async function startCam() {
     _setCamH = setH;
     v.addEventListener('loadedmetadata', setH, { once: true });
     setTimeout(setH, 250);
-    if (mode === 'qr')  qrTimer  = setInterval(scanQR,  180);
-    if (mode === 'jan') janTimer = setInterval(scanJAN, 180);
+
+    /* ★ [v3.3.0] 省電力モードに応じてスキャン間隔を切替 */
+    var interval = _batMode ? SCAN_INTERVAL_BAT : SCAN_INTERVAL_NORMAL;
+    if (mode === 'qr')  qrTimer  = setInterval(scanQR,  interval);
+    if (mode === 'jan') janTimer = setInterval(scanJAN, interval);
   } catch(err) {
     var msg = err.name === 'NotAllowedError'   ? 'カメラのアクセスが拒否されました'
             : err.name === 'NotFoundError'     ? 'カメラが見つかりません'
@@ -1328,8 +1411,11 @@ async function startCam() {
 function stopCam() {
   clearInterval(qrTimer);  qrTimer  = null;
   clearInterval(janTimer); janTimer = null;
+  /* ★ [v3.3.0] ライトをOFF */
+  if (_torchOn) { _setTorch(false); _torchOn = false; }
   if (camStr_) { camStr_.getTracks().forEach(function(t) { t.stop(); }); camStr_ = null; }
   camOn = false; ocrBusy = false; _setCamH = null;
+  _hwZoom = false; _torchSupport = false; _curZoom = 1.0;
   /* ★ [v3.2.0] スキャン用Canvasの参照をリセットしてメモリ解放を促す */
   _scanCanvas = null; _scanCtx = null;
   document.getElementById('cama').style.display  = 'none';
@@ -1337,7 +1423,129 @@ function stopCam() {
   document.getElementById('sb-start').style.display = 'flex';
   document.getElementById('sb-stop').style.display  = 'none';
   document.getElementById('sb-cap').style.display   = 'none';
+  /* ★ [v3.3.0] コントロールUIを隠す */
+  document.getElementById('cam-ctrl').classList.remove('on');
+  _updTorchBtn();
   updManSrch();
+}
+
+/* ============================================================
+   ★ [v3.3.0] カメラ能力初期化（ズーム・ライト対応確認）
+   ============================================================ */
+function _initCamCapabilities() {
+  if (!camStr_) return;
+  var track = camStr_.getVideoTracks()[0];
+  if (!track) return;
+
+  /* ズーム */
+  try {
+    var caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.zoom) {
+      _hwZoom   = true;
+      _zoomMin  = caps.zoom.min || 1.0;
+      _zoomMax  = Math.min(caps.zoom.max || 8.0, 8.0);
+      _curZoom  = _zoomMin;
+      var sl = document.getElementById('zoom-slider');
+      sl.min = _zoomMin; sl.max = _zoomMax; sl.step = 0.1; sl.value = _curZoom;
+      document.getElementById('zoom-val').textContent = '×' + _curZoom.toFixed(1);
+    } else {
+      /* ハードウェアズーム非対応 → CSS scaleで疑似ズーム */
+      _hwZoom  = false;
+      _zoomMin = 1.0; _zoomMax = 4.0; _curZoom = 1.0;
+      var sl2 = document.getElementById('zoom-slider');
+      sl2.min = 1.0; sl2.max = 4.0; sl2.step = 0.1; sl2.value = 1.0;
+      document.getElementById('zoom-val').textContent = '×1.0';
+    }
+    /* ライト */
+    _torchSupport = !!(caps.torch);
+    _torchOn = false;
+    _updTorchBtn();
+  } catch(e) {
+    _hwZoom = false; _torchSupport = false;
+  }
+  /* コントロールUI表示 */
+  document.getElementById('cam-ctrl').classList.add('on');
+}
+
+/* ズームスライダー操作 */
+function onZoomSlider(val) {
+  _setZoom(parseFloat(val));
+}
+/* ±ボタン操作 */
+function zoomStep(dir) {
+  var step = (_zoomMax - _zoomMin) / 20;
+  var next = Math.min(_zoomMax, Math.max(_zoomMin, _curZoom + dir * step));
+  next = Math.round(next * 10) / 10;
+  document.getElementById('zoom-slider').value = next;
+  _setZoom(next);
+}
+/* ズーム適用 */
+function _setZoom(val) {
+  _curZoom = val;
+  document.getElementById('zoom-val').textContent = '×' + val.toFixed(1);
+  if (_hwZoom && camStr_) {
+    /* ハードウェアズーム */
+    var track = camStr_.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      track.applyConstraints({ advanced: [{ zoom: val }] }).catch(function(){});
+    }
+  } else {
+    /* 疑似ズーム（CSS transform scale on video・中心基点） */
+    var v = document.getElementById('cv');
+    if (v) v.style.transform = val > 1.05 ? 'scale(' + val + ')' : '';
+  }
+}
+
+/* ライトON/OFF */
+function toggleTorch() {
+  if (!_torchSupport) {
+    toast('このデバイスはライト非対応です', 'info'); return;
+  }
+  _torchOn = !_torchOn;
+  _setTorch(_torchOn);
+  _updTorchBtn();
+}
+function _setTorch(on) {
+  if (!camStr_) return;
+  var track = camStr_.getVideoTracks()[0];
+  if (track && track.applyConstraints) {
+    track.applyConstraints({ advanced: [{ torch: on }] }).catch(function(){});
+  }
+}
+function _updTorchBtn() {
+  var btn = document.getElementById('torch-btn');
+  if (!btn) return;
+  btn.classList.toggle('on', _torchOn);
+  btn.textContent = _torchOn ? '🔦 ON' : '🔦 ライト';
+  if (!_torchSupport && !_torchOn) btn.style.opacity = '0.45';
+  else btn.style.opacity = '';
+}
+
+/* ============================================================
+   ★ [v3.3.0] バッテリー節約モード切替
+   - 省電力ON : 640×480 / 15fps / スキャン350ms間隔
+   - 省電力OFF: 1280×960 / 30fps / スキャン200ms間隔
+   ============================================================ */
+function toggleBatMode() {
+  _batMode = !_batMode;
+  var btn   = document.getElementById('bat-btn');
+  var badge = document.getElementById('bat-badge');
+  if (btn)   btn.classList.toggle('on', _batMode);
+  if (badge) badge.classList.toggle('on', _batMode);
+  if (camOn) {
+    /* スキャン間隔を即時切替 */
+    clearInterval(qrTimer);  qrTimer  = null;
+    clearInterval(janTimer); janTimer = null;
+    var interval = _batMode ? SCAN_INTERVAL_BAT : SCAN_INTERVAL_NORMAL;
+    if (mode === 'qr')  qrTimer  = setInterval(scanQR,  interval);
+    if (mode === 'jan') janTimer = setInterval(scanJAN, interval);
+    /* 解像度変更のためカメラ再起動 */
+    toast(_batMode ? '省電力モードON — 低解像度で再起動します' : '通常モードに戻します', 'info');
+    stopCam();
+    setTimeout(startCam, 400);
+  } else {
+    toast(_batMode ? '省電力モードON（次回起動時から適用）' : '省電力モードOFF', 'info');
+  }
 }
 
 /* ★ [v3.2.0] スキャン用Canvasはグローバルで1枚を再利用（毎フレームgetContext呼び出しを軽量化） */
@@ -1801,7 +2009,7 @@ function openRegModal(isHit) {
 
   /* --- 数量 --- */
   var inp = document.getElementById('regQtyInput');
-  inp.value = curQty || 0;
+  inp.value = (curQty > 0) ? curQty : '';
   document.getElementById('regQtyUnit').textContent = curUnit || '個';
 
   document.getElementById('regmover').classList.add('on');
@@ -1866,7 +2074,7 @@ function onRegItsChange() {
 function clearRegModal() {
   /* 数量をゼロに */
   var inp = document.getElementById('regQtyInput');
-  if (inp) { inp.value = 0; inp.focus(); inp.select(); }
+  if (inp) { inp.value = ''; inp.focus(); inp.select(); }
   /* 製番入力欄クリア（OCR時のみ表示） */
   var seiInp = document.getElementById('regSeiInput');
   if (seiInp) seiInp.value = '';
@@ -1909,7 +2117,8 @@ async function regData() {
   /* ★ [v3.0.0] 数量をモーダルの入力欄から取得 */
   var qtyInp = document.getElementById('regQtyInput');
   var qtyVal = parseInt(qtyInp ? qtyInp.value : '0', 10);
-  if (isNaN(qtyVal) || qtyVal < 0) {
+  if (isNaN(qtyVal)) qtyVal = 0;   /* ★ [v3.3.0] 空欄は0として登録 */
+  if (qtyVal < 0) {
     toast('0以上の数値を入力してください', 'err'); return;
   }
   curQty = qtyVal;
