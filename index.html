@@ -27,6 +27,10 @@
     --hdr:62px;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  /* ★ [v3.2.0] ダブルタップズーム・テキスト選択を全インタラクティブ要素で抑制 */
+  button,a,[role="button"]{touch-action:manipulation;}
+  input,textarea,select{touch-action:manipulation;user-select:text;-webkit-user-select:text;}
+  .main,.reg-modal-box,.hlist,.m-list{-webkit-user-select:none;user-select:none;}
 
   /* ===== モバイル基本（iPhone優先） ===== */
   html{height:100%;height:-webkit-fill-available;}
@@ -608,10 +612,10 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.1.5<br>
+          <div class="s-info">DX棚卸アプリ v3.2.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ Bug-1〜9 修正済み（品名ロック/担当者復元/末尾0リスト連携 等）</span></div>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.2.0: AudioCtxリーク修正 / GASリトライ / localStorageキャッシュ / ダブルタップ抑制</span></div>
         </div>
       </div>
     </div>
@@ -858,6 +862,15 @@ function dbA(s) {
 }
 function dbP(s, d) {
   return new Promise(function(r, e) {
+    /* ★ [v3.2.0] DB未オープン時は再オープンして再試行 */
+    if (!_db) {
+      openDB().then(function() {
+        var q = tx_(s,'readwrite').put(d);
+        q.onsuccess = function() { r(q.result); };
+        q.onerror   = function() { e(q.error); };
+      }).catch(e);
+      return;
+    }
     var q = tx_(s,'readwrite').put(d);
     q.onsuccess = function() { r(q.result); };
     q.onerror   = function() { e(q.error); };
@@ -875,6 +888,32 @@ function dbC(s) {
     var q = tx_(s,'readwrite').clear();
     q.onsuccess = function() { r(); };
     q.onerror   = function() { e(q.error); };
+  });
+}
+
+/* ★ [v3.2.0] GASリトライ（最大3回・エクスポネンシャルバックオフ）
+   ネットワーク一時切断やGAS一時エラー時に自動リトライ */
+function gasWithRetry(fn, maxRetry) {
+  maxRetry = maxRetry || 3;
+  return new Promise(function(resolve, reject) {
+    var attempt = 0;
+    function tryOnce() {
+      attempt++;
+      fn().then(resolve).catch(function(err) {
+        /* AbortError（タイムアウト）・HTTP以外のネットワークエラーはリトライ */
+        var isRetryable = err.name === 'AbortError' ||
+                          err.name === 'TypeError'  ||   /* fetch network error */
+                          err.message.indexOf('タイムアウト') >= 0;
+        if (isRetryable && attempt < maxRetry) {
+          var delay = 1000 * Math.pow(2, attempt - 1); /* 1s, 2s, 4s */
+          toast('通信リトライ中… (' + attempt + '/' + maxRetry + ')', 'info');
+          setTimeout(tryOnce, delay);
+        } else {
+          reject(err);
+        }
+      });
+    }
+    tryOnce();
   });
 }
 
@@ -923,6 +962,52 @@ function gasPost(body) {
 }
 
 /* ============================================================
+   ★ [v3.2.0] オフライン検知 + クラッシュ復元用 localStorage キャッシュ
+   ============================================================ */
+var LS_MASTER_KEY  = 'dx_inv_master_v1';
+var LS_DROP_KEY    = 'dx_inv_drop_v1';
+var LS_PERSMAP_KEY = 'dx_inv_pers_v1';
+var LS_TZERO_KEY   = 'dx_inv_tzero_v1';
+var LS_TS_KEY      = 'dx_inv_cache_ts';
+var CACHE_TTL_MS   = 24 * 60 * 60 * 1000; /* 24時間 */
+
+function lsSave(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+function lsLoad(key, fallback) {
+  try {
+    var s = localStorage.getItem(key);
+    return s ? JSON.parse(s) : fallback;
+  } catch(e) { return fallback; }
+}
+function isCacheValid() {
+  try {
+    var ts = parseInt(localStorage.getItem(LS_TS_KEY) || '0', 10);
+    return (Date.now() - ts) < CACHE_TTL_MS;
+  } catch(e) { return false; }
+}
+function saveMasterCache(dd, master, persmap, tailzero) {
+  lsSave(LS_DROP_KEY,    dd);
+  lsSave(LS_MASTER_KEY,  master);
+  lsSave(LS_PERSMAP_KEY, persmap);
+  lsSave(LS_TZERO_KEY,   tailzero);
+  try { localStorage.setItem(LS_TS_KEY, String(Date.now())); } catch(e) {}
+}
+function loadMasterFromCache() {
+  return {
+    dropData:   lsLoad(LS_DROP_KEY,    null),
+    master:     lsLoad(LS_MASTER_KEY,  null),
+    persMap_:   lsLoad(LS_PERSMAP_KEY, null),
+    tailZero:   lsLoad(LS_TZERO_KEY,   null)
+  };
+}
+
+/* オフライン判定 */
+function isOnline() {
+  return typeof navigator.onLine === 'undefined' || navigator.onLine;
+}
+
+/* ============================================================
    起動処理
    ============================================================ */
 async function init() {
@@ -956,35 +1041,41 @@ var _loadingMaster = false;
 async function loadAllMaster(isReload) {
   if (_loadingMaster) return;
   _loadingMaster = true;
+
+  /* ★ [v3.2.0] オフライン時はキャッシュから即時復元 */
+  if (!isReload && !isOnline()) {
+    var cached = loadMasterFromCache();
+    if (cached.master) {
+      applyMasterData(cached.dropData, cached.master, cached.persMap_, cached.tailZero);
+      _loadingMaster = false;
+      toast('オフライン — キャッシュからマスタを復元しました', 'info');
+      return;
+    }
+  }
+
   showLoad(isReload
     ? 'マスタデータ再読み込み中…'
     : 'アプリ起動中…\nマスタデータを読み込んでいます。\nしばらくお待ちください。');
   try {
     var forceParam = isReload ? { force: '1' } : {};
+
+    /* ★ [v3.2.0] GASリトライ付き並列フェッチ */
     var results = await Promise.all([
-      gasGet('getDropdowns',     forceParam),
-      gasGet('getMasterList',    forceParam),
-      gasGet('getAllPersonnel',  forceParam),
-      gasGet('getTailZeroList',  forceParam)
+      gasWithRetry(function(){ return gasGet('getDropdowns',    forceParam); }),
+      gasWithRetry(function(){ return gasGet('getMasterList',   forceParam); }),
+      gasWithRetry(function(){ return gasGet('getAllPersonnel', forceParam); }),
+      gasWithRetry(function(){ return gasGet('getTailZeroList', forceParam); })
     ]);
+
     var dd       = results[0];
     var master   = results[1];
     var allPers  = results[2];
     var tailZero = results[3];
 
-    dropData    = dd || { departments:[], inventoryTypes:[] };
-    masterData  = Array.isArray(master) ? master : [];
-    persMap     = (allPers && typeof allPers === 'object') ? allPers : {};
-    tailZeroSet = new Set(
-      (Array.isArray(tailZero) ? tailZero : [])
-        .map(function(c) { return String(c).toUpperCase().replace(/-/g, ''); })
-    );
+    applyMasterData(dd, master, allPers, tailZero);
 
-    var depts = (dropData.departments   || []);
-    var stocks = (dropData.inventoryTypes || []);
-
-    fillSel('ds',  depts);
-    fillSel('its', stocks);
+    /* ★ [v3.2.0] 取得成功 → localStorageにキャッシュ保存 */
+    saveMasterCache(dd, master, allPers, tailZero);
 
     _loadingMaster = false;
     hideLoad();
@@ -995,10 +1086,36 @@ async function loadAllMaster(isReload) {
   } catch(e) {
     _loadingMaster = false;
     hideLoad();
-    toast('マスタ読込失敗: ' + e.message, 'err');
-    var mmeta2 = document.getElementById('mmeta');
-    if (mmeta2) mmeta2.textContent = 'マスタ読込失敗 — 再読込ボタンを押してください';
+
+    /* ★ [v3.2.0] GAS失敗時 → キャッシュがあれば自動フォールバック */
+    var fb = loadMasterFromCache();
+    if (fb.master) {
+      applyMasterData(fb.dropData, fb.master, fb.persMap_, fb.tailZero);
+      toast('GAS接続失敗 — キャッシュから復元しました: ' + e.message, 'err');
+      var mmeta3 = document.getElementById('mmeta');
+      if (mmeta3) mmeta3.textContent = 'キャッシュ復元済み（再読込推奨）';
+    } else {
+      toast('マスタ読込失敗: ' + e.message, 'err');
+      var mmeta2 = document.getElementById('mmeta');
+      if (mmeta2) mmeta2.textContent = 'マスタ読込失敗 — 再読込ボタンを押してください';
+    }
+    rendMaster();
   }
+}
+
+/* ★ [v3.2.0] マスタデータ適用（キャッシュ・GAS両方から使う） */
+function applyMasterData(dd, master, allPers, tailZero) {
+  dropData    = dd || { departments:[], inventoryTypes:[] };
+  masterData  = Array.isArray(master) ? master : [];
+  persMap     = (allPers && typeof allPers === 'object') ? allPers : {};
+  tailZeroSet = new Set(
+    (Array.isArray(tailZero) ? tailZero : [])
+      .map(function(c) { return String(c).toUpperCase().replace(/-/g, ''); })
+  );
+  var depts  = (dropData.departments   || []);
+  var stocks = (dropData.inventoryTypes || []);
+  fillSel('ds',  depts);
+  fillSel('its', stocks);
 }
 
 async function reloadMaster() {
@@ -1213,6 +1330,8 @@ function stopCam() {
   clearInterval(janTimer); janTimer = null;
   if (camStr_) { camStr_.getTracks().forEach(function(t) { t.stop(); }); camStr_ = null; }
   camOn = false; ocrBusy = false; _setCamH = null;
+  /* ★ [v3.2.0] スキャン用Canvasの参照をリセットしてメモリ解放を促す */
+  _scanCanvas = null; _scanCtx = null;
   document.getElementById('cama').style.display  = 'none';
   document.getElementById('camph').style.display = 'flex';
   document.getElementById('sb-start').style.display = 'flex';
@@ -1221,19 +1340,32 @@ function stopCam() {
   updManSrch();
 }
 
+/* ★ [v3.2.0] スキャン用Canvasはグローバルで1枚を再利用（毎フレームgetContext呼び出しを軽量化） */
+var _scanCanvas = null;
+var _scanCtx    = null;
+function getScanCanvas(w, hh) {
+  if (!_scanCanvas) {
+    _scanCanvas = document.getElementById('qc');
+    if (!_scanCanvas) { _scanCanvas = document.createElement('canvas'); }
+    _scanCtx = _scanCanvas.getContext('2d');
+  }
+  if (_scanCanvas.width !== w || _scanCanvas.height !== hh) {
+    _scanCanvas.width = w; _scanCanvas.height = hh;
+  }
+  return { canvas: _scanCanvas, ctx: _scanCtx };
+}
+
 /* ============================================================
    QRスキャン
    ============================================================ */
 function scanQR() {
   var v = document.getElementById('cv');
-  var c = document.getElementById('qc');
   if (!v || v.readyState < 2) return;
   var w = v.videoWidth, hh = v.videoHeight;
   if (!w || !hh) return;
-  c.width = w; c.height = hh;
-  var ctx = c.getContext('2d');
-  ctx.drawImage(v, 0, 0, w, hh);
-  var img = ctx.getImageData(0, 0, w, hh);
+  var sc = getScanCanvas(w, hh);
+  sc.ctx.drawImage(v, 0, 0, w, hh);
+  var img = sc.ctx.getImageData(0, 0, w, hh);
   var res = jsQR(img.data, w, hh, { inversionAttempts: 'dontInvert' });
   if (!res || !res.data) return;
   var code = res.data.trim();
@@ -1256,15 +1388,14 @@ function scanQR() {
 function scanJAN() {
   if (!janReader) return;
   var v = document.getElementById('cv');
-  var c = document.getElementById('qc');
   if (!v || v.readyState < 2) return;
   var w = v.videoWidth, hh = v.videoHeight;
   if (!w || !hh) return;
-  c.width = w; c.height = hh;
-  c.getContext('2d').drawImage(v, 0, 0, w, hh);
+  var sc = getScanCanvas(w, hh);
+  sc.ctx.drawImage(v, 0, 0, w, hh);
   var code = null;
   try {
-    var lum    = new ZXing.HTMLCanvasElementLuminanceSource(c);
+    var lum    = new ZXing.HTMLCanvasElementLuminanceSource(sc.canvas);
     var bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
     code = janReader.decode(bitmap).getText();
   } catch(e) { return; }
@@ -1957,7 +2088,7 @@ async function sendData() {
     })
   };
   try {
-    var res = await gasPost(payload);
+    var res = await gasWithRetry(function(){ return gasPost(payload); });
     var results = res.results || [];
 
     /* ★ 各itemの結果でsent_flagを判定 */
@@ -2134,9 +2265,23 @@ function h(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* ★ [v3.2.0] AudioContext をシングルトン化（毎回newするとメモリリーク）
+   609回スキャンで609個のAudioContextが残留 → クラッシュの主因 */
+var _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  /* iOS Safari: ユーザー操作後に suspended になる場合がある */
+  if (_audioCtx && _audioCtx.state === 'suspended') {
+    _audioCtx.resume().catch(function(){});
+  }
+  return _audioCtx;
+}
 function beep() {
   try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var ctx = getAudioCtx();
+    if (!ctx) return;
     var osc = ctx.createOscillator();
     var g   = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
@@ -2144,6 +2289,7 @@ function beep() {
     g.gain.setValueAtTime(0.28, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
     osc.start(); osc.stop(ctx.currentTime + 0.15);
+    /* ★ ノードは stop後に自動GCされるが、ctx自体は再利用 */
   } catch(e2) {}
 }
 
