@@ -290,6 +290,58 @@
   .stag{display:inline-block;background:var(--green);color:#fff;
     font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;}
   .stag.err{background:#c03030;}
+  /* ★ [v3.4.0] 履歴修正モーダル */
+  #editMover{display:none;position:fixed;inset:0;background:rgba(10,18,50,.62);
+    z-index:500;align-items:flex-end;justify-content:center;padding:0;}
+  #editMover.on{display:flex;}
+  #editModalBox{background:var(--surface);border-radius:20px 20px 0 0;
+    width:100%;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:0 0 max(env(safe-area-inset-bottom),16px);}
+  .em-hdr{background:linear-gradient(135deg,#1a3fa0,#0d2870);border-radius:20px 20px 0 0;
+    padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;}
+  .em-ttl{color:#fff;font-size:15px;font-weight:700;font-family:var(--font);}
+  .em-close{background:rgba(255,255,255,.18);border:none;border-radius:50%;
+    width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer;
+    -webkit-appearance:none;display:flex;align-items:center;justify-content:center;
+    touch-action:manipulation;}
+  .em-body{padding:14px 16px 0;}
+  .em-src-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;
+    border-radius:6px;margin-bottom:10px;}
+  .em-src-tag.jan{background:rgba(15,158,110,.15);color:#0f9e6e;}
+  .em-src-tag.qr{background:rgba(46,107,224,.15);color:#2e6be0;}
+  .em-src-tag.ocr{background:rgba(123,63,242,.15);color:#7b3ff2;}
+  .em-field{margin-bottom:12px;}
+  .em-label{font-size:11px;color:var(--text-light);font-weight:600;margin-bottom:4px;}
+  .em-val{font-size:13px;color:var(--text);background:var(--bg);
+    border-radius:8px;padding:8px 10px;border:1.5px solid var(--blue-lt);}
+  .em-input{width:100%;font-size:16px;font-weight:700;font-family:var(--font);
+    border:2px solid var(--blue-lt);border-radius:8px;padding:9px 11px;
+    background:#fff;color:var(--text);outline:none;-webkit-appearance:none;
+    touch-action:manipulation;}
+  .em-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,107,224,.18);}
+  .em-input.ocr-edit{border-color:var(--purple);}
+  .em-input.ocr-edit:focus{box-shadow:0 0 0 3px rgba(123,63,242,.18);}
+  .em-srch-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;}
+  .em-srch-row .em-field{flex:1;margin-bottom:0;}
+  .em-srch-btn{padding:9px 12px;background:linear-gradient(135deg,var(--green),#076e49);
+    color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;
+    font-family:var(--font);cursor:pointer;-webkit-appearance:none;
+    touch-action:manipulation;white-space:nowrap;flex-shrink:0;}
+  .em-srch-btn:active{transform:scale(.95);}
+  .em-hit{font-size:11px;padding:6px 10px;border-radius:6px;margin-bottom:10px;}
+  .em-hit.ok{background:rgba(15,158,110,.12);color:#076e49;}
+  .em-hit.ng{background:rgba(192,48,48,.10);color:#c03030;}
+  .em-divider{height:1px;background:var(--blue-lt);margin:10px 0 14px;}
+  .em-footer{display:flex;gap:10px;padding:0 16px;margin-top:4px;}
+  .em-btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:14px;
+    font-weight:700;font-family:var(--font);cursor:pointer;
+    -webkit-appearance:none;touch-action:manipulation;transition:transform .12s;}
+  .em-btn:active{transform:scale(.96);}
+  .em-btn.cancel{background:var(--bg);color:var(--text-light);border:1.5px solid var(--blue-lt);}
+  .em-btn.save{flex:2;background:linear-gradient(135deg,var(--blue),var(--primary));color:#fff;
+    box-shadow:0 3px 12px rgba(20,80,200,.28);}
+  .hi{cursor:pointer;transition:background .12s;}
+  .hi:active{background:rgba(46,107,224,.07);}
   .m-tb{padding:10px 13px 6px;display:flex;gap:8px;align-items:center;}
   .srch-i{flex:1;padding:10px 13px;border:1.5px solid var(--blue-lt);
     border-radius:10px;font-size:14px;font-family:var(--font);
@@ -672,10 +724,10 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.3.1<br>
+          <div class="s-info">DX棚卸アプリ v3.4.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.3.1: カメラ映像高さ修正 / 登録完了音追加</span></div>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.4.0: 履歴修正機能追加（数量修正・OCR図番修正）</span></div>
         </div>
       </div>
     </div>
@@ -767,6 +819,69 @@
   </div>
 </div>
 
+<!-- ★ [v3.4.0] 履歴修正モーダル -->
+<div id="editMover">
+  <div id="editModalBox">
+    <div class="em-hdr">
+      <span class="em-ttl" id="emTitle">✏️ 登録データを修正</span>
+      <button type="button" class="em-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="em-body">
+      <!-- スキャン種別タグ -->
+      <span class="em-src-tag" id="emSrcTag"></span>
+      <!-- 図番（OCR時は編集可、JAN/QR時は表示のみ） -->
+      <div id="emZunoBlock">
+        <div class="em-srch-row">
+          <div class="em-field">
+            <div class="em-label">図番</div>
+            <input type="text" class="em-input ocr-edit" id="emZunoInput"
+              autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+              placeholder="図番を入力" oninput="onEmZunoInput()">
+          </div>
+          <button type="button" class="em-srch-btn" onclick="emSearchMaster()">🔍 検索</button>
+        </div>
+        <div class="em-hit" id="emHitResult" style="display:none;"></div>
+      </div>
+      <div id="emZunoDisp" style="display:none;">
+        <div class="em-field">
+          <div class="em-label">図番</div>
+          <div class="em-val" id="emZunoVal"></div>
+        </div>
+      </div>
+      <!-- 品名 -->
+      <div class="em-field">
+        <div class="em-label">品名</div>
+        <div class="em-val" id="emHinmei">—</div>
+      </div>
+      <!-- 製番（OCR時のみ編集可） -->
+      <div class="em-field" id="emSeibanBlock" style="display:none;">
+        <div class="em-label">製番</div>
+        <input type="text" class="em-input ocr-edit" id="emSeibanInput"
+          autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+          placeholder="製番（任意）">
+      </div>
+      <div class="em-divider"></div>
+      <!-- 数量（常時編集可） -->
+      <div class="em-field">
+        <div class="em-label">数量 <span id="emUnitLabel" style="font-weight:400;font-size:10px;"></span></div>
+        <input type="number" class="em-input" id="emQtyInput"
+          inputmode="numeric" pattern="[0-9]*" min="0" step="1"
+          placeholder="0" autocomplete="off"
+          oninput="updEmSaveBtn()">
+      </div>
+      <!-- メタ情報（読取専用） -->
+      <div class="em-field">
+        <div class="em-label">場所 / 担当者 / 区分</div>
+        <div class="em-val" id="emMeta" style="font-size:12px;"></div>
+      </div>
+    </div>
+    <div class="em-footer">
+      <button type="button" class="em-btn cancel" onclick="closeEditModal()">キャンセル</button>
+      <button type="button" class="em-btn save" id="emSaveBtn" onclick="saveEditModal()">💾 保存して再送信</button>
+    </div>
+  </div>
+</div>
+
 <div id="ghost-block" style="display:none;position:fixed;inset:0;z-index:399;background:transparent;"></div>
 <div id="toast"></div>
 <div id="load"><div class="spin"></div><div class="ld-lbl" id="ldlbl">処理中...</div></div>
@@ -776,7 +891,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxYV0Tgr0bNnV7TOrjB0Fb_6ESv1qWYv_bEzo3iEkk4YR6_1fL15z4i3We41SNv9_K3/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwT8i3sGu6GsjFbmDXdPf6vbgRmpOOzdvl_LOCeRzsFc1yGAxy37tmDwL-HT_mtGpTN/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -2176,6 +2291,7 @@ async function regData() {
     personnel:     document.getElementById('ps').value,
     inventoryType: document.getElementById('its').value,
     scanned_at:    now.toISOString(),
+    scan_src:      curScanSrc || 'jan',   /* ★ [v3.4.0] スキャン種別（jan/qr/ocr）を保存 */
     sent_flag:     0,
     last_error:    ''       /* ★ [Bug-6] エラー情報を保持 */
   };
@@ -2253,11 +2369,13 @@ async function rendHist() {
     var classes = 'hi';
     if (i.sent_flag) classes += ' sent';
     else if (hasError) classes += ' errflag';
-
-    return '<div class="' + classes + '">' +
+    /* ★ [v3.4.0] scan_srcタグ */
+    var srcLabel = i.scan_src === 'ocr' ? '🔬OCR' : (i.scan_src === 'qr' ? '📷QR' : '🏷JAN');
+    /* ★ [v3.4.0] タップで修正モーダルを開く。data-idにIndexedDB keyを付与 */
+    return '<div class="' + classes + '" onclick="openEditModal(' + i.id + ')">' +
       '<div class="hi-ico">' + (i.sent_flag ? '&#9989;' : (hasError ? '&#9888;' : '&#128230;')) + '</div>' +
       '<div class="hi-info">' +
-        '<div class="hi-code">' + h(i.zuno) + '</div>' +
+        '<div class="hi-code">' + h(i.zuno) + ' <span style="font-size:9px;opacity:.7;">' + srcLabel + '</span></div>' +
         '<div class="hi-name">' + h(i.hinmei || '—') + '</div>' +
         '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + h(i.department) + ' / ' + h(i.personnel) +
           (i.seiban ? ' / 製番:' + h(i.seiban) : '') + '</div>' +
@@ -2266,7 +2384,7 @@ async function rendHist() {
       '<div class="hi-right">' +
         '<div class="hi-qty">' + i.quantity + '<span style="font-size:11px;font-weight:400"> ' + h(i.unit || '個') + '</span></div>' +
         '<div class="hi-qm">' + h(i.inventoryType || '') + '</div>' +
-        (i.sent_flag ? '<span class="stag">送信済</span>' : (hasError ? '<span class="stag err">エラー</span>' : '')) +
+        (i.sent_flag ? '<span class="stag">送信済</span>' : (hasError ? '<span class="stag err">エラー</span>' : '<span class="stag" style="background:#2e6be0;">✏️ 修正可</span>')) +
       '</div>' +
     '</div>';
   }).join('');
@@ -2278,6 +2396,191 @@ async function updBadge() {
   var el    = document.getElementById('pb');
   el.textContent = '未送信:' + pend + '件';
   el.classList.toggle('on', pend > 0);
+}
+
+/* ============================================================
+   ★ [v3.4.0] 履歴修正モーダル
+   ============================================================ */
+var _editItem = null;   /* 修正対象のIndexedDBレコード */
+var _emHitData = null;  /* マスタ検索ヒット結果 */
+
+/* 修正モーダルを開く（履歴行タップ） */
+async function openEditModal(id) {
+  /* IndexedDBから対象レコードを取得 */
+  var all = await dbA('inv');
+  var item = null;
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].id === id) { item = all[i]; break; }
+  }
+  if (!item) { toast('データが見つかりません', 'err'); return; }
+  _editItem  = item;
+  _emHitData = null;
+
+  var isOcr = (item.scan_src === 'ocr') || false;
+
+  /* ヘッダータイトル */
+  document.getElementById('emTitle').textContent =
+    item.sent_flag ? '✏️ 修正（再送信されます）' : '✏️ 登録データを修正';
+
+  /* スキャン種別タグ */
+  var tag = document.getElementById('emSrcTag');
+  var srcMap = { jan: 'JAN バーコード', qr: 'QR コード', ocr: 'OCR（図番認識）' };
+  var srcCls = item.scan_src || 'jan';
+  tag.textContent = srcMap[srcCls] || srcCls;
+  tag.className = 'em-src-tag ' + srcCls;
+
+  /* 図番: OCR時は入力可・それ以外は表示のみ */
+  document.getElementById('emZunoBlock').style.display = isOcr ? '' : 'none';
+  document.getElementById('emZunoDisp').style.display  = isOcr ? 'none' : '';
+  if (isOcr) {
+    document.getElementById('emZunoInput').value = item.zuno || '';
+  } else {
+    document.getElementById('emZunoVal').textContent = item.zuno || '—';
+  }
+  document.getElementById('emHitResult').style.display = 'none';
+
+  /* 品名 */
+  document.getElementById('emHinmei').textContent = item.hinmei || '—';
+
+  /* 製番: OCR時のみ表示 */
+  document.getElementById('emSeibanBlock').style.display = isOcr ? '' : 'none';
+  if (isOcr) document.getElementById('emSeibanInput').value = item.seiban || '';
+
+  /* 数量 */
+  var qtyInp = document.getElementById('emQtyInput');
+  qtyInp.value = (item.quantity > 0) ? item.quantity : '';
+  document.getElementById('emUnitLabel').textContent = item.unit || '個';
+
+  /* メタ */
+  document.getElementById('emMeta').textContent =
+    (item.department || '') + ' / ' + (item.personnel || '') + ' / ' + (item.inventoryType || '');
+
+  updEmSaveBtn();
+
+  /* モーダルを開く */
+  document.getElementById('editMover').classList.add('on');
+
+  /* フォーカス */
+  setTimeout(function() {
+    if (isOcr) {
+      document.getElementById('emZunoInput').focus();
+    } else {
+      qtyInp.focus(); qtyInp.select();
+    }
+  }, 80);
+}
+
+/* 保存ボタン活性判定 */
+function updEmSaveBtn() {
+  var btn = document.getElementById('emSaveBtn');
+  if (!btn || !_editItem) return;
+  var qty = parseInt(document.getElementById('emQtyInput').value, 10);
+  var ok  = !isNaN(qty) && qty >= 0;
+  /* OCR時は図番が空だと保存不可 */
+  if (_editItem.scan_src === 'ocr') {
+    var z = document.getElementById('emZunoInput').value.trim();
+    ok = ok && z.length > 0;
+  }
+  btn.disabled = !ok;
+}
+
+/* マスタ再検索（OCR時の図番修正） */
+function onEmZunoInput() {
+  /* 入力中はヒット表示をクリア */
+  document.getElementById('emHitResult').style.display = 'none';
+  document.getElementById('emHinmei').textContent = _editItem ? (_editItem.hinmei || '—') : '—';
+  _emHitData = null;
+  updEmSaveBtn();
+}
+function emSearchMaster() {
+  var raw = document.getElementById('emZunoInput').value.trim().toUpperCase();
+  var code = stripSymbols(raw);
+  if (!code) { toast('図番を入力してください', 'info'); return; }
+
+  var hitEl = document.getElementById('emHitResult');
+  var hit = null;
+  for (var i = 0; i < masterData.length; i++) {
+    if (stripSymbols(masterData[i].product_code) === code) { hit = masterData[i]; break; }
+  }
+  hitEl.style.display = '';
+  if (hit) {
+    _emHitData = hit;
+    hitEl.className = 'em-hit ok';
+    hitEl.textContent = '✔ ヒット: ' + (hit.hinmei || hit.product_name || '品名なし');
+    document.getElementById('emHinmei').textContent = hit.hinmei || hit.product_name || '—';
+    toast('マスタヒット: ' + (hit.hinmei || hit.product_name || ''), 'ok');
+  } else {
+    _emHitData = null;
+    hitEl.className = 'em-hit ng';
+    hitEl.textContent = '⚠ マスタ未登録 — このまま保存することもできます';
+    document.getElementById('emHinmei').textContent = '（マスタ未登録）';
+    toast('マスタに見つかりません', 'info');
+  }
+  updEmSaveBtn();
+}
+
+/* モーダルを閉じる */
+function closeEditModal() {
+  document.getElementById('editMover').classList.remove('on');
+  _editItem = null;
+  _emHitData = null;
+}
+
+/* 保存処理 */
+async function saveEditModal() {
+  if (!_editItem) return;
+
+  var newQty = parseInt(document.getElementById('emQtyInput').value, 10);
+  if (isNaN(newQty) || newQty < 0) {
+    toast('0以上の数値を入力してください', 'err'); return;
+  }
+
+  /* 修正前の状態をコピー（GASへ旧データを渡すため） */
+  var oldItem = JSON.parse(JSON.stringify(_editItem));
+
+  /* 新しい値を適用 */
+  _editItem.quantity = newQty;
+
+  if (_editItem.scan_src === 'ocr') {
+    /* 図番修正 */
+    var newZuno = stripSymbols(document.getElementById('emZunoInput').value.trim().toUpperCase());
+    _editItem.zuno    = newZuno;
+    _editItem.seiban  = document.getElementById('emSeibanInput').value.trim();
+    /* マスタヒット時は品名・サイズを自動更新 */
+    if (_emHitData) {
+      _editItem.hinmei = _emHitData.hinmei || _emHitData.product_name || _editItem.hinmei;
+      _editItem.size   = _emHitData.size   || _editItem.size;
+    }
+  }
+
+  /* 修正時刻を記録 */
+  _editItem.modified_at  = new Date().toISOString();
+  /* 送信済みでも修正したら再送信対象に戻す */
+  _editItem.sent_flag    = 0;
+  _editItem.last_error   = '';
+
+  /* IndexedDB を上書き保存 */
+  await dbP('inv', _editItem);
+
+  /* GASにも即時同期（update_item アクション） */
+  var savedItem = _editItem;
+  closeEditModal();
+  beepReg();
+  toast('修正しました ✔  ' + savedItem.zuno + '  ' + savedItem.quantity + (savedItem.unit || '個'), 'ok');
+
+  await rendHist();
+  await updBadge();
+
+  /* バックグラウンドでGASに送信（失敗しても次の一括送信で再試行できる） */
+  gasWithRetry(function() {
+    return gasPost({
+      action:  'update_item',
+      oldItem: oldItem,
+      newItem: savedItem
+    });
+  }).catch(function(e) {
+    toast('GAS同期失敗（次回一括送信時に再送されます）: ' + e.message, 'info');
+  });
 }
 
 /* ============================================================
