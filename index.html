@@ -724,10 +724,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">DX棚卸アプリ v3.4.0<br>
+        <div class="s-info">DX棚卸アプリ v3.5.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.4.0: 履歴修正機能追加（数量修正・OCR図番修正）</span></div>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.5.0: 場所ドロップダウンを担当者マップ由来に統一（担当者との不一致を構造的に解消）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
         </div>
       </div>
     </div>
@@ -891,7 +892,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxYV0Tgr0bNnV7TOrjB0Fb_6ESv1qWYv_bEzo3iEkk4YR6_1fL15z4i3We41SNv9_K3/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwtLQZDbYkeKkQmOhj5C3gmLTR5FTf1yx7zAcXuXi9ARHD-EOeNOn_LHe5zaCUlj5Vl/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -1302,7 +1303,11 @@ function applyMasterData(dd, master, allPers, tailZero) {
     (Array.isArray(tailZero) ? tailZero : [])
       .map(function(c) { return String(c).toUpperCase().replace(/-/g, ''); })
   );
-  var depts  = (dropData.departments   || []);
+/* ★ [v3.5.0] 場所(部署)ドロップダウンは担当者マップ(persMap)のキーから生成する。
+     旧実装は getDropdowns のA列(棚卸部門)由来だったが、担当者はC列(担当者部門)から
+     引くため、両列がずれると「場所を選んでも担当者が空」が起き得た。
+     persMapのキー＝担当者が実在する部門なので、ここから生成すれば担当者と構造的に必ず一致する。 */
+  var depts  = Object.keys(persMap);
   var stocks = (dropData.inventoryTypes || []);
   fillSel('ds',  depts);
   fillSel('its', stocks);
