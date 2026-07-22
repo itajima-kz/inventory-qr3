@@ -178,6 +178,8 @@
     background:var(--cyan);border:2px solid #fff;cursor:pointer;}
   .zoom-val{font-size:11px;font-weight:700;color:var(--cyan);
     min-width:30px;text-align:right;flex-shrink:0;}
+  /* ★ [v3.6.0] 疑似ズーム（デジタルズーム）中のバッジ */
+  .zoom-val.digital{color:#ffd700;}
   /* ライト・バッテリーモードボタン */
   .cc-btn{padding:5px 10px;border:1.5px solid rgba(255,255,255,.4);
     border-radius:8px;background:rgba(0,0,0,.45);color:#fff;
@@ -314,6 +316,8 @@
   .em-label{font-size:11px;color:var(--text-light);font-weight:600;margin-bottom:4px;}
   .em-val{font-size:13px;color:var(--text);background:var(--bg);
     border-radius:8px;padding:8px 10px;border:1.5px solid var(--blue-lt);}
+  /* ★ [v3.6.0] 図番変更で品名がクリアされた状態を強調 */
+  .em-val.cleared{background:var(--warn-lt);border-color:var(--warn);color:var(--warn);font-weight:700;}
   .em-input{width:100%;font-size:16px;font-weight:700;font-family:var(--font);
     border:2px solid var(--blue-lt);border-radius:8px;padding:9px 11px;
     background:#fff;color:var(--text);outline:none;-webkit-appearance:none;
@@ -331,6 +335,7 @@
   .em-hit{font-size:11px;padding:6px 10px;border-radius:6px;margin-bottom:10px;}
   .em-hit.ok{background:rgba(15,158,110,.12);color:#076e49;}
   .em-hit.ng{background:rgba(192,48,48,.10);color:#c03030;}
+  .em-hit.info{background:rgba(224,120,0,.12);color:#c06000;}
   .em-divider{height:1px;background:var(--blue-lt);margin:10px 0 14px;}
   .em-footer{display:flex;gap:10px;padding:0 16px;margin-top:4px;}
   .em-btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:14px;
@@ -715,7 +720,10 @@
             　Enterキーでも登録可能。リセットで次スキャンへ<br><br>
             <b>⑥ 履歴タブで一括送信</b><br>
             　GAS → スプレッドシート → ASTERIA → IBM i<br>
-            　送信エラーの分は未送信のまま残り、再送可能
+            　送信エラーの分は未送信のまま残り、再送可能<br><br>
+            <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
+            　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
+            　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります
           </div>
         </div>
       </div>
@@ -724,11 +732,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v3.5.0<br>
+        <div class="s-info">DX棚卸アプリ v3.6.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.5.0: 場所ドロップダウンを担当者マップ由来に統一（担当者との不一致を構造的に解消）</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.6.0: デジタルズームをスキャン画像に反映／履歴修正の二重書込を防止／図番変更時に品名を自動再照合</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v3.5.0: 場所ドロップダウンを担当者マップ由来に統一<br>
+          v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
         </div>
       </div>
     </div>
@@ -892,7 +901,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbygh9zLpTucTZs5cP6tIYZHx8jlwozP_CJiUvqnUOqeopSw2WmRdJZY4QBNGyvBJW5S/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw4xsJcCwSBHq8TCLcWfbcN9Ps0q_pMZovgMXQYoOAWk1r410Y3xxtnBXPTv1VCxXw/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -941,6 +950,15 @@ var CAM_CONSTRAINTS_BAT    = { facingMode: { ideal: 'environment' }, width: { id
 /* スキャンタイマー間隔(ms): 通常/省電力 */
 var SCAN_INTERVAL_NORMAL = 200;
 var SCAN_INTERVAL_BAT    = 350;
+
+/* ★ [v3.6.0] 疑似ズーム（デジタルズーム）とみなす閾値。
+   これを超えている場合のみ、スキャン画像側にも中央クロップを適用する。 */
+var DIGITAL_ZOOM_MIN = 1.05;
+
+/* ★ [v3.6.0] 現在デジタルズームが効いているか（HWズーム非対応かつ拡大中） */
+function isDigitalZoom() {
+  return (!_hwZoom && _curZoom > DIGITAL_ZOOM_MIN);
+}
 
 /* ============================================================
    ★ [Bug-9] 末尾0・末尾空白除去（末尾0リスト連携版）
@@ -1303,7 +1321,7 @@ function applyMasterData(dd, master, allPers, tailZero) {
     (Array.isArray(tailZero) ? tailZero : [])
       .map(function(c) { return String(c).toUpperCase().replace(/-/g, ''); })
   );
-/* ★ [v3.5.0] 場所(部署)ドロップダウンは担当者マップ(persMap)のキーから生成する。
+  /* ★ [v3.5.0] 場所(部署)ドロップダウンは担当者マップ(persMap)のキーから生成する。
      旧実装は getDropdowns のA列(棚卸部門)由来だったが、担当者はC列(担当者部門)から
      引くため、両列がずれると「場所を選んでも担当者が空」が起き得た。
      persMapのキー＝担当者が実在する部門なので、ここから生成すれば担当者と構造的に必ず一致する。 */
@@ -1541,6 +1559,12 @@ function stopCam() {
   if (camStr_) { camStr_.getTracks().forEach(function(t) { t.stop(); }); camStr_ = null; }
   camOn = false; ocrBusy = false; _setCamH = null;
   _hwZoom = false; _torchSupport = false; _curZoom = 1.0;
+  /* ★ [v3.6.0] 疑似ズームのCSS変形を必ず戻す。
+     旧実装は _curZoom だけ1.0に戻して transform を残していたため、
+     次回カメラ起動時に「倍率×1.0表示なのに映像だけ拡大されたまま」に
+     なり、スキャン画像との不一致（＝読めない）を招いていた。 */
+  var vEl = document.getElementById('cv');
+  if (vEl) vEl.style.transform = '';
   /* ★ [v3.2.0] スキャン用Canvasの参照をリセットしてメモリ解放を促す */
   _scanCanvas = null; _scanCtx = null;
   document.getElementById('cama').style.display  = 'none';
@@ -1562,6 +1586,10 @@ function _initCamCapabilities() {
   var track = camStr_.getVideoTracks()[0];
   if (!track) return;
 
+  /* ★ [v3.6.0] 起動時にCSS変形を初期化（前回の疑似ズームを持ち越さない） */
+  var v0 = document.getElementById('cv');
+  if (v0) v0.style.transform = '';
+
   /* ズーム */
   try {
     var caps = track.getCapabilities ? track.getCapabilities() : {};
@@ -1572,15 +1600,14 @@ function _initCamCapabilities() {
       _curZoom  = _zoomMin;
       var sl = document.getElementById('zoom-slider');
       sl.min = _zoomMin; sl.max = _zoomMax; sl.step = 0.1; sl.value = _curZoom;
-      document.getElementById('zoom-val').textContent = '×' + _curZoom.toFixed(1);
     } else {
-      /* ハードウェアズーム非対応 → CSS scaleで疑似ズーム */
+      /* ハードウェアズーム非対応 → デジタルズーム（中央クロップ）で代替 */
       _hwZoom  = false;
       _zoomMin = 1.0; _zoomMax = 4.0; _curZoom = 1.0;
       var sl2 = document.getElementById('zoom-slider');
       sl2.min = 1.0; sl2.max = 4.0; sl2.step = 0.1; sl2.value = 1.0;
-      document.getElementById('zoom-val').textContent = '×1.0';
     }
+    _updZoomLabel();
     /* ライト */
     _torchSupport = !!(caps.torch);
     _torchOn = false;
@@ -1590,6 +1617,15 @@ function _initCamCapabilities() {
   }
   /* コントロールUI表示 */
   document.getElementById('cam-ctrl').classList.add('on');
+}
+
+/* ★ [v3.6.0] 倍率表示。デジタルズーム時は (D) を付けて画質劣化を明示 */
+function _updZoomLabel() {
+  var el = document.getElementById('zoom-val');
+  if (!el) return;
+  var digital = isDigitalZoom();
+  el.textContent = '×' + _curZoom.toFixed(1) + (digital ? '(D)' : '');
+  el.classList.toggle('digital', digital);
 }
 
 /* ズームスライダー操作 */
@@ -1607,18 +1643,19 @@ function zoomStep(dir) {
 /* ズーム適用 */
 function _setZoom(val) {
   _curZoom = val;
-  document.getElementById('zoom-val').textContent = '×' + val.toFixed(1);
   if (_hwZoom && camStr_) {
-    /* ハードウェアズーム */
+    /* ハードウェアズーム（光学/センサー側で拡大されるのでスキャン画像にも効く） */
     var track = camStr_.getVideoTracks()[0];
     if (track && track.applyConstraints) {
       track.applyConstraints({ advanced: [{ zoom: val }] }).catch(function(){});
     }
   } else {
-    /* 疑似ズーム（CSS transform scale on video・中心基点） */
+    /* デジタルズーム: 表示はCSS transform、スキャン画像は drawScanFrame /
+       capFrame 側で中央クロップして拡大する（v3.6.0で整合させた） */
     var v = document.getElementById('cv');
-    if (v) v.style.transform = val > 1.05 ? 'scale(' + val + ')' : '';
+    if (v) v.style.transform = val > DIGITAL_ZOOM_MIN ? 'scale(' + val + ')' : '';
   }
+  _updZoomLabel();
 }
 
 /* ライトON/OFF */
@@ -1689,6 +1726,34 @@ function getScanCanvas(w, hh) {
 }
 
 /* ============================================================
+   ★ [v3.6.0] スキャン用フレーム描画（デジタルズーム対応）
+
+   【旧実装の問題】
+   - HWズーム非対応端末では video に CSS transform:scale をかけるだけで、
+     drawImage(v,0,0,w,h) はネイティブ解像度の全画面フレームを取っていた。
+   - つまり「画面上は拡大されているのに、デコーダに渡る画像は等倍」で、
+     ズームしても認識率がまったく変わらなかった（＝拡大したのに読めない）。
+
+   【修正】
+   - デジタルズーム中は、映像中央の 1/z 領域を切り出してキャンバス全面に
+     引き伸ばす。画面表示（CSS scale）と同じ範囲が同じ倍率でデコーダに渡る。
+   - 出力キャンバスは元と同じ w×h なので、実質的に解像度を使い切って拡大
+     される（バーコードのバー間隔がピクセル的に広がり認識しやすくなる）。
+   ============================================================ */
+function drawScanFrame(v, w, hh) {
+  var sc = getScanCanvas(w, hh);
+  if (isDigitalZoom()) {
+    var z  = _curZoom;
+    var cw = w / z, ch = hh / z;
+    var sx = (w - cw) / 2, sy = (hh - ch) / 2;
+    sc.ctx.drawImage(v, sx, sy, cw, ch, 0, 0, w, hh);
+  } else {
+    sc.ctx.drawImage(v, 0, 0, w, hh);
+  }
+  return sc;
+}
+
+/* ============================================================
    QRスキャン
    ============================================================ */
 function scanQR() {
@@ -1696,8 +1761,8 @@ function scanQR() {
   if (!v || v.readyState < 2) return;
   var w = v.videoWidth, hh = v.videoHeight;
   if (!w || !hh) return;
-  var sc = getScanCanvas(w, hh);
-  sc.ctx.drawImage(v, 0, 0, w, hh);
+  /* ★ [v3.6.0] デジタルズームをスキャン画像にも反映 */
+  var sc = drawScanFrame(v, w, hh);
   var img = sc.ctx.getImageData(0, 0, w, hh);
   var res = jsQR(img.data, w, hh, { inversionAttempts: 'dontInvert' });
   if (!res || !res.data) return;
@@ -1724,8 +1789,8 @@ function scanJAN() {
   if (!v || v.readyState < 2) return;
   var w = v.videoWidth, hh = v.videoHeight;
   if (!w || !hh) return;
-  var sc = getScanCanvas(w, hh);
-  sc.ctx.drawImage(v, 0, 0, w, hh);
+  /* ★ [v3.6.0] デジタルズームをスキャン画像にも反映 */
+  var sc = drawScanFrame(v, w, hh);
   var code = null;
   try {
     var lum    = new ZXing.HTMLCanvasElementLuminanceSource(sc.canvas);
@@ -1825,6 +1890,24 @@ function capFrame() {
   var sy = Math.round((gT + oy) / scale);
   var sw = Math.round(gW / scale);
   var sh = Math.round(gH / scale);
+
+  /* ★ [v3.6.0] デジタルズーム中の座標補正。
+     video に CSS scale(z) が中心基点でかかっているため、画面に見えている
+     のは映像中央の 1/z 領域。ガイド枠の映像座標も中心方向へ 1/z に縮めて
+     対応付けないと、ズーム時に「枠に入れたのに枠外を切り出す」ことになる。 */
+  if (isDigitalZoom()) {
+    var z  = _curZoom;
+    var cx = sx + sw / 2, cy = sy + sh / 2;
+    sw = sw / z;
+    sh = sh / z;
+    cx = vw / 2 + (cx - vw / 2) / z;
+    cy = vh / 2 + (cy - vh / 2) / z;
+    sx = Math.round(cx - sw / 2);
+    sy = Math.round(cy - sh / 2);
+    sw = Math.round(sw);
+    sh = Math.round(sh);
+  }
+
   sx = Math.max(0, Math.min(vw - 1, sx));
   sy = Math.max(0, Math.min(vh - 1, sy));
   sw = Math.max(1, Math.min(vw - sx, sw));
@@ -1892,6 +1975,20 @@ function opiBlur() {
 }
 
 /* ============================================================
+   ★ [v3.6.0] マスタ照合（共通ヘルパー）
+   applyCode / emSearchMaster / saveEditModal から共通で使う。
+   照合キーはハイフン等を除去した英数字のみ（IBM iマスタに合わせる）。
+   ============================================================ */
+function findMasterByCode(code) {
+  var key = stripSymbols(code);
+  if (!key) return null;
+  for (var i = 0; i < masterData.length; i++) {
+    if (stripSymbols(masterData[i].product_code) === key) return masterData[i];
+  }
+  return null;
+}
+
+/* ============================================================
    マスタ検索（OCR後・手入力後）
    ============================================================ */
 function doOcrSrch() {
@@ -1924,14 +2021,9 @@ function applyCode(code, src) {
 
   // 比較用キー（ハイフン除去・大文字）
   var searchKey = stripSymbols(code);
-  
-  // マスタ検索
-  var hit = null;
-  for (var i = 0; i < masterData.length; i++) {
-    if (stripSymbols(masterData[i].product_code) === searchKey) {
-      hit = masterData[i]; break;
-    }
-  }
+
+  // マスタ検索（★ [v3.6.0] 共通ヘルパーに集約）
+  var hit = findMasterByCode(searchKey);
 
   var ze = document.getElementById('zuno');
   var he = document.getElementById('hinmei');
@@ -2265,12 +2357,10 @@ async function regData() {
   var rawZuno = document.getElementById('zuno').value.trim();
   var zuno    = stripSymbols(rawZuno);
 
-  var size = '';
-  for (var i = 0; i < masterData.length; i++) {
-    if (stripSymbols(masterData[i].product_code) === zuno) {
-      size = masterData[i].size || ''; break;
-    }
-  }
+  /* ★ [v3.6.0] サイズ取得も共通ヘルパーに集約 */
+  var sizeHit = findMasterByCode(zuno);
+  var size    = sizeHit ? (sizeHit.size || '') : '';
+
   /* ★ [v3.1.0] OCR時はモーダルの製番入力欄から取得、それ以外は元のsei欄 */
   var seiVal = '';
   if (curScanSrc === 'ocr') {
@@ -2445,7 +2535,9 @@ async function openEditModal(id) {
   document.getElementById('emHitResult').style.display = 'none';
 
   /* 品名 */
-  document.getElementById('emHinmei').textContent = item.hinmei || '—';
+  var hinmeiEl = document.getElementById('emHinmei');
+  hinmeiEl.textContent = item.hinmei || '—';
+  hinmeiEl.className = 'em-val';
 
   /* 製番: OCR時のみ表示 */
   document.getElementById('emSeibanBlock').style.display = isOcr ? '' : 'none';
@@ -2489,36 +2581,55 @@ function updEmSaveBtn() {
   btn.disabled = !ok;
 }
 
-/* マスタ再検索（OCR時の図番修正） */
+/* ★ [v3.6.0] 図番入力中の案内。
+   検索を押さずに保存しても保存時に自動照合されるため、その旨を明示する。 */
 function onEmZunoInput() {
-  /* 入力中はヒット表示をクリア */
-  document.getElementById('emHitResult').style.display = 'none';
-  document.getElementById('emHinmei').textContent = _editItem ? (_editItem.hinmei || '—') : '—';
   _emHitData = null;
+
+  var hitEl    = document.getElementById('emHitResult');
+  var hinmeiEl = document.getElementById('emHinmei');
+  var cur      = stripSymbols(document.getElementById('emZunoInput').value);
+  var org      = _editItem ? stripSymbols(_editItem.zuno || '') : '';
+
+  if (_editItem && cur && cur !== org) {
+    /* 図番が変わった → 旧品名は無効になる可能性がある旨を予告 */
+    hitEl.style.display = '';
+    hitEl.className = 'em-hit info';
+    hitEl.textContent = 'ℹ 図番変更中 — 「検索」を押すか、保存時に自動でマスタ照合します';
+    hinmeiEl.textContent = '（保存時に再判定されます）';
+    hinmeiEl.className = 'em-val cleared';
+  } else {
+    hitEl.style.display = 'none';
+    hinmeiEl.textContent = _editItem ? (_editItem.hinmei || '—') : '—';
+    hinmeiEl.className = 'em-val';
+  }
   updEmSaveBtn();
 }
+
+/* 手動のマスタ検索（OCR時の図番修正） */
 function emSearchMaster() {
   var raw = document.getElementById('emZunoInput').value.trim().toUpperCase();
   var code = stripSymbols(raw);
   if (!code) { toast('図番を入力してください', 'info'); return; }
 
-  var hitEl = document.getElementById('emHitResult');
-  var hit = null;
-  for (var i = 0; i < masterData.length; i++) {
-    if (stripSymbols(masterData[i].product_code) === code) { hit = masterData[i]; break; }
-  }
+  var hitEl    = document.getElementById('emHitResult');
+  var hinmeiEl = document.getElementById('emHinmei');
+  var hit      = findMasterByCode(code);
+
   hitEl.style.display = '';
   if (hit) {
     _emHitData = hit;
     hitEl.className = 'em-hit ok';
-    hitEl.textContent = '✔ ヒット: ' + (hit.hinmei || hit.product_name || '品名なし');
-    document.getElementById('emHinmei').textContent = hit.hinmei || hit.product_name || '—';
-    toast('マスタヒット: ' + (hit.hinmei || hit.product_name || ''), 'ok');
+    hitEl.textContent = '✔ ヒット: ' + (hit.product_name || '品名なし');
+    hinmeiEl.textContent = hit.product_name || '—';
+    hinmeiEl.className = 'em-val';
+    toast('マスタヒット: ' + (hit.product_name || ''), 'ok');
   } else {
     _emHitData = null;
     hitEl.className = 'em-hit ng';
-    hitEl.textContent = '⚠ マスタ未登録 — このまま保存することもできます';
-    document.getElementById('emHinmei').textContent = '（マスタ未登録）';
+    hitEl.textContent = '⚠ マスタ未登録 — 保存すると品名は空になります';
+    hinmeiEl.textContent = '（マスタ未登録）';
+    hinmeiEl.className = 'em-val cleared';
     toast('マスタに見つかりません', 'info');
   }
   updEmSaveBtn();
@@ -2531,7 +2642,13 @@ function closeEditModal() {
   _emHitData = null;
 }
 
-/* 保存処理 */
+/* ============================================================
+   保存処理
+   
+   ★ [v3.6.0] 2点の修正
+   ② 未送信レコードでは update_item を呼ばない（二重書込・重複行の防止）
+   ④ 図番を変更したのに「検索」未実行でも、保存時に自動でマスタ再照合する
+   ============================================================ */
 async function saveEditModal() {
   if (!_editItem) return;
 
@@ -2543,18 +2660,41 @@ async function saveEditModal() {
   /* 修正前の状態をコピー（GASへ旧データを渡すため） */
   var oldItem = JSON.parse(JSON.stringify(_editItem));
 
+  /* ★ [v3.6.0] ② 修正前が「送信済み」だったかを保持。
+     この判定を先に取っておかないと、下で sent_flag=0 に戻した後では
+     元がシートに存在した行かどうかが分からなくなる。 */
+  var wasSent = (oldItem.sent_flag === 1);
+
   /* 新しい値を適用 */
   _editItem.quantity = newQty;
 
   if (_editItem.scan_src === 'ocr') {
     /* 図番修正 */
     var newZuno = stripSymbols(document.getElementById('emZunoInput').value.trim().toUpperCase());
-    _editItem.zuno    = newZuno;
-    _editItem.seiban  = document.getElementById('emSeibanInput').value.trim();
-    /* マスタヒット時は品名・サイズを自動更新 */
-    if (_emHitData) {
-      _editItem.hinmei = _emHitData.hinmei || _emHitData.product_name || _editItem.hinmei;
-      _editItem.size   = _emHitData.size   || _editItem.size;
+    var oldZuno = stripSymbols(oldItem.zuno || '');
+    _editItem.zuno   = newZuno;
+    _editItem.seiban = document.getElementById('emSeibanInput').value.trim();
+
+    if (newZuno !== oldZuno) {
+      /* ★ [v3.6.0] ④ 図番が変わった場合は必ずマスタを引き直す。
+         旧実装は _emHitData（＝「検索」ボタンを押した時だけ入る）が null だと
+         何もせず、旧図番の品名・サイズが新図番に付いたまま保存されていた。 */
+      var hit = _emHitData || findMasterByCode(newZuno);
+      if (hit) {
+        _editItem.hinmei = hit.product_name || '';
+        _editItem.size   = hit.size || '';
+        _editItem.unit   = hit.unit || _editItem.unit || '個';
+        toast('図番を変更しました → ' + (hit.product_name || '（品名なし）'), 'ok');
+      } else {
+        /* マスタ未登録: 旧品名を引き継ぐと誤った組合せが残るためクリアする */
+        _editItem.hinmei = '';
+        _editItem.size   = '';
+        toast('図番を変更しました（マスタ未登録のため品名をクリア）', 'info');
+      }
+    } else if (_emHitData) {
+      /* 図番は同じだが検索でヒットした → 最新のマスタ値に揃える */
+      _editItem.hinmei = _emHitData.product_name || _editItem.hinmei;
+      _editItem.size   = _emHitData.size || _editItem.size;
     }
   }
 
@@ -2567,7 +2707,6 @@ async function saveEditModal() {
   /* IndexedDB を上書き保存 */
   await dbP('inv', _editItem);
 
-  /* GASにも即時同期（update_item アクション） */
   var savedItem = _editItem;
   closeEditModal();
   beepReg();
@@ -2576,16 +2715,23 @@ async function saveEditModal() {
   await rendHist();
   await updBadge();
 
-  /* バックグラウンドでGASに送信（失敗しても次の一括送信で再試行できる） */
-  gasWithRetry(function() {
-    return gasPost({
-      action:  'update_item',
-      oldItem: oldItem,
-      newItem: savedItem
+  /* ★ [v3.6.0] ② 未送信データはシートにまだ行が無いため update_item を呼ばない。
+     旧実装は無条件に呼んでおり、GAS側は該当行が見つからず inserted_fallback で
+     行を挿入 → その後の一括送信でも同じ複合キーが送られるため、両者の
+     タイミング次第で重複行が発生し得た（GASは直列化されていない）。
+     送信済みだったレコードだけ、シート上の既存行を即時上書きする。
+     未送信のものは通常の「一括送信」に任せれば正しく1行だけ作られる。 */
+  if (wasSent) {
+    gasWithRetry(function() {
+      return gasPost({
+        action:  'update_item',
+        oldItem: oldItem,
+        newItem: savedItem
+      });
+    }).catch(function(e) {
+      toast('GAS同期失敗（次回一括送信時に再送されます）: ' + e.message, 'info');
     });
-  }).catch(function(e) {
-    toast('GAS同期失敗（次回一括送信時に再送されます）: ' + e.message, 'info');
-  });
+  }
 }
 
 /* ============================================================
