@@ -732,9 +732,12 @@
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
-            <b>⑧ オフライン対応（v3.7.0〜）</b><br>
-            　マスタは端末内(IndexedDB)に保存され、電波が無い時も<br>
-            　直前のマスタで動作します（「キャッシュ状態を確認」で検証可）
+            <b>⑧ オフライン対応・高速起動（v3.7.0〜/v3.8.0〜）</b><br>
+            　マスタは端末内(IndexedDB)に保存され、2回目以降の起動は<br>
+            　保存済みデータを使うため通信せず即座に立ち上がります<br>
+            　（24時間経過後は自動で取り直します）<br>
+            　<b>マスタを更新した直後は「再読込」を押してください</b><br>
+            　保存状態は「キャッシュ状態を確認」で検証できます
           </div>
         </div>
       </div>
@@ -743,11 +746,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v3.7.0<br>
+        <div class="s-info">DX棚卸アプリ v3.8.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.7.0: 製品名のパディング除去でデータ削減／マスタキャッシュをIndexedDB化しオフライン復元を実動化</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v3.6.0: デジタルズーム反映／履歴修正の二重書込防止／図番変更時の品名再照合<br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.8.0: 保存済みマスタを優先利用（24時間）— 起動時のダウンロードを毎回→1日1回に削減</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v3.7.0: パディング除去でデータ削減／マスタキャッシュをIndexedDB化<br>
+          v3.6.0: デジタルズーム反映／履歴修正の二重書込防止／図番変更時の品名再照合<br>
           v3.5.0: 場所ドロップダウンを担当者マップ由来に統一<br>
           v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
         </div>
@@ -1295,11 +1299,22 @@ function updClock() {
 }
 
 /* ============================================================
-   ★ [v2.4.0] マスタデータ一括読込
+   ★ [v2.4.0→v3.8.0] マスタデータ一括読込
    - Promise.all で並列化
    - getAllPersonnel で1発取得（N+1 fetch 解消）
    - getTailZeroList も同時取得
    - reloadMaster 時は force=1 でキャッシュ無視（Bug-8）
+
+   ★ [v3.8.0] キャッシュ優先（TTL活用）
+   旧実装は、IndexedDBキャッシュがあっても「オフライン時」と「GAS失敗時」
+   にしか使わず、通常のオンライン起動では毎回マスタ全件（数MB）を
+   ダウンロードし直していた。マスタ更新は月次であり、毎起動で取り直す
+   必要はない。ここではキャッシュが新しい（24時間以内）なら通信自体を
+   行わず即座に起動する。
+   - 通信は「1日1回」程度に減り、起動が数十秒→ほぼ即時になる。
+   - 手動の「再読込」ボタン（isReload=true）はTTLを無視して必ず取得する
+     ので、マスタを更新した直後でも即反映できる。
+   - キャッシュが古い（24時間超）場合は従来どおり通信して取り直す。
    ============================================================ */
 var _loadingMaster = false;
 
@@ -1307,14 +1322,35 @@ async function loadAllMaster(isReload) {
   if (_loadingMaster) return;
   _loadingMaster = true;
 
-  /* ★ [v3.7.0] オフライン時はIndexedDBキャッシュから即時復元 */
-  if (!isReload && !isOnline()) {
+  /* ★ [v3.8.0] 通常起動時はキャッシュを最優先で使う。
+     - 新しい（TTL内）なら通信せずに起動 → 転送量ゼロ・即時表示
+     - 古くてもオフラインなら、無いよりは良いので使う（従来動作） */
+  if (!isReload) {
     var cached = await loadMasterFromCache();
     if (cached && cached.master) {
-      applyMasterData(cached.dropData, cached.master, cached.persMap_, cached.tailZero);
-      _loadingMaster = false;
-      toast('オフライン — キャッシュからマスタを復元しました', 'info');
-      return;
+      var ageMs  = cached.ts ? (Date.now() - cached.ts) : Infinity;
+      var isFresh = ageMs < CACHE_TTL_MS;
+      if (isFresh || !isOnline()) {
+        applyMasterData(cached.dropData, cached.master, cached.persMap_, cached.tailZero);
+        _loadingMaster = false;
+        var mins = isFinite(ageMs) ? Math.round(ageMs / 60000) : null;
+        var ageStr = (mins === null) ? '保存時刻不明'
+                   : (mins < 60) ? (mins + '分前')
+                   : (Math.round(mins / 60) + '時間前');
+        if (!isOnline() && !isFresh) {
+          toast('オフライン — 保存済みマスタで起動しました（' + ageStr + '）', 'info');
+        } else {
+          toast('マスタ ' + masterData.length + '件（保存済み・' + ageStr + '）', 'ok');
+        }
+        var mmetaC = document.getElementById('mmeta');
+        if (mmetaC) {
+          mmetaC.textContent = masterData.length + '件  / 保存済みデータを使用（' + ageStr
+            + '）— 最新にするには「再読込」';
+        }
+        rendMaster();
+        return;
+      }
+      /* TTL切れ かつ オンライン → このまま下の通信処理へ（失敗時はcatchで復元） */
     }
   }
 
