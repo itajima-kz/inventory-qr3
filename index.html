@@ -690,6 +690,14 @@
             &#128260; マスタデータを今すぐ再読込
           </button>
         </div>
+        <!-- ★ [v3.7.0] オフラインキャッシュ状態の確認 -->
+        <div class="s-row">
+          <div class="s-lbl">オフラインキャッシュ（IndexedDB）</div>
+          <div class="s-info" id="cacheStatus" style="margin-bottom:8px;">確認するには下のボタンを押してください</div>
+          <button type="button" class="ref-btn" style="width:100%;background:linear-gradient(135deg,var(--cyan),#2a90b0);" onclick="checkCacheStatus()">
+            &#128269; キャッシュ状態を確認
+          </button>
+        </div>
       </div>
     </div>
     <div class="ss">
@@ -723,7 +731,10 @@
             　送信エラーの分は未送信のまま残り、再送可能<br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
-            　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります
+            　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
+            <b>⑧ オフライン対応（v3.7.0〜）</b><br>
+            　マスタは端末内(IndexedDB)に保存され、電波が無い時も<br>
+            　直前のマスタで動作します（「キャッシュ状態を確認」で検証可）
           </div>
         </div>
       </div>
@@ -732,11 +743,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v3.6.0<br>
+        <div class="s-info">DX棚卸アプリ v3.7.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.6.0: デジタルズームをスキャン画像に反映／履歴修正の二重書込を防止／図番変更時に品名を自動再照合</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v3.5.0: 場所ドロップダウンを担当者マップ由来に統一<br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v3.7.0: 製品名のパディング除去でデータ削減／マスタキャッシュをIndexedDB化しオフライン復元を実動化</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v3.6.0: デジタルズーム反映／履歴修正の二重書込防止／図番変更時の品名再照合<br>
+          v3.5.0: 場所ドロップダウンを担当者マップ由来に統一<br>
           v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
         </div>
       </div>
@@ -901,7 +913,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw4xsJcCwSBHq8TCLcWfbcN9Ps0q_pMZovgMXQYoOAWk1r410Y3xxtnBXPTv1VCxXw/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxxwQ5k7J_PBfXJmTGPHgVNQADhfXekDb83m8JpUesrV2dZ8ixd9rG-KyLA5EKZfG6u/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -1044,24 +1056,49 @@ function preprocessForOCR(srcCanvas) {
 }
 
 /* ============================================================
-   IndexedDB（履歴専用）
+   IndexedDB（履歴 + マスタキャッシュ）
    ============================================================ */
 var DBN = 'TanaTsuroV2';
+var DB_VERSION = 2;   /* ★ [v3.7.0] meta ストア追加でv2へ */
 var _db = null;
 
 function openDB() {
   return new Promise(function(res, rej) {
-    var r = indexedDB.open(DBN, 1);
+    var r = indexedDB.open(DBN, DB_VERSION);
     r.onupgradeneeded = function(e) {
       var d = e.target.result;
       if (!d.objectStoreNames.contains('inv'))
         d.createObjectStore('inv', { keyPath:'id', autoIncrement:true });
+      /* ★ [v3.7.0] 案B: マスタキャッシュをlocalStorage(5MB上限)から
+         IndexedDB(実質無制限)へ移設。マスタは数MBあり localStorage には
+         入らず、旧実装は QuotaExceededError を握りつぶしていたため
+         オフライン復元が無言で機能していなかった。それを解消する。 */
+      if (!d.objectStoreNames.contains('meta'))
+        d.createObjectStore('meta', { keyPath:'key' });
     };
     r.onsuccess = function(e) { _db = e.target.result; res(_db); };
     r.onerror   = function(e) { rej(e.target.error); };
   });
 }
 function tx_(s, m) { return _db.transaction(s, m).objectStore(s); }
+
+/* ★ [v3.7.0] meta ストア read/write（マスタキャッシュ用） */
+function metaGet(key) {
+  return new Promise(function(r, e) {
+    if (!_db) { openDB().then(function(){ metaGet(key).then(r).catch(e); }).catch(e); return; }
+    var q = tx_('meta','readonly').get(key);
+    q.onsuccess = function() { r(q.result ? q.result.value : null); };
+    q.onerror   = function() { e(q.error); };
+  });
+}
+function metaPut(key, value) {
+  return new Promise(function(r, e) {
+    if (!_db) { openDB().then(function(){ metaPut(key, value).then(r).catch(e); }).catch(e); return; }
+    var q = tx_('meta','readwrite').put({ key: key, value: value });
+    q.onsuccess = function() { r(); };
+    q.onerror   = function() { e(q.error); };
+  });
+}
 function dbA(s) {
   return new Promise(function(r, e) {
     var q = tx_(s,'readonly').getAll();
@@ -1171,44 +1208,63 @@ function gasPost(body) {
 }
 
 /* ============================================================
-   ★ [v3.2.0] オフライン検知 + クラッシュ復元用 localStorage キャッシュ
-   ============================================================ */
-var LS_MASTER_KEY  = 'dx_inv_master_v1';
-var LS_DROP_KEY    = 'dx_inv_drop_v1';
-var LS_PERSMAP_KEY = 'dx_inv_pers_v1';
-var LS_TZERO_KEY   = 'dx_inv_tzero_v1';
-var LS_TS_KEY      = 'dx_inv_cache_ts';
-var CACHE_TTL_MS   = 24 * 60 * 60 * 1000; /* 24時間 */
+   ★ [v3.2.0→v3.7.0] オフライン検知 + クラッシュ復元用マスタキャッシュ
 
-function lsSave(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
-}
-function lsLoad(key, fallback) {
+   v3.7.0（案B）で保存先を localStorage(5MB上限) → IndexedDB へ移設。
+   マスタは数MBあり localStorage には収まらず、旧 lsSave は
+   QuotaExceededError を握りつぶしていたため、実際には一度も保存できて
+   いなかった（＝オフライン復元／GAS失敗フォールバックが無言で不動）。
+   IndexedDB の meta ストアに保存することで、これが初めて機能する。
+   保存はJSON文字列化せずオブジェクトのまま入れる（structured clone）。
+   ============================================================ */
+var META_MASTER_KEY = 'master';
+var META_DROP_KEY   = 'drop';
+var META_PERS_KEY   = 'pers';
+var META_TZERO_KEY  = 'tzero';
+var META_TS_KEY     = 'ts';
+var CACHE_TTL_MS    = 24 * 60 * 60 * 1000; /* 24時間 */
+
+/* ★ [v3.7.0] キャッシュ保存（IndexedDB）。失敗しても致命的ではないので握る。 */
+async function saveMasterCache(dd, master, persmap, tailzero) {
   try {
-    var s = localStorage.getItem(key);
-    return s ? JSON.parse(s) : fallback;
-  } catch(e) { return fallback; }
+    await metaPut(META_MASTER_KEY, master);
+    await metaPut(META_DROP_KEY,   dd);
+    await metaPut(META_PERS_KEY,   persmap);
+    await metaPut(META_TZERO_KEY,  tailzero);
+    await metaPut(META_TS_KEY,     Date.now());
+  } catch(e) {
+    /* 保存失敗（容量・トランザクション等）はオンライン動作に影響しない */
+    console.warn('マスタキャッシュ保存失敗:', e);
+  }
 }
-function isCacheValid() {
+
+/* ★ [v3.7.0] キャッシュ読込（IndexedDB）。master が無ければ null を返す。 */
+async function loadMasterFromCache() {
   try {
-    var ts = parseInt(localStorage.getItem(LS_TS_KEY) || '0', 10);
-    return (Date.now() - ts) < CACHE_TTL_MS;
-  } catch(e) { return false; }
+    var master = await metaGet(META_MASTER_KEY);
+    if (!master) return null;
+    return {
+      dropData: await metaGet(META_DROP_KEY),
+      master:   master,
+      persMap_: await metaGet(META_PERS_KEY),
+      tailZero: await metaGet(META_TZERO_KEY),
+      ts:       await metaGet(META_TS_KEY)
+    };
+  } catch(e) {
+    console.warn('マスタキャッシュ読込失敗:', e);
+    return null;
+  }
 }
-function saveMasterCache(dd, master, persmap, tailzero) {
-  lsSave(LS_DROP_KEY,    dd);
-  lsSave(LS_MASTER_KEY,  master);
-  lsSave(LS_PERSMAP_KEY, persmap);
-  lsSave(LS_TZERO_KEY,   tailzero);
-  try { localStorage.setItem(LS_TS_KEY, String(Date.now())); } catch(e) {}
-}
-function loadMasterFromCache() {
-  return {
-    dropData:   lsLoad(LS_DROP_KEY,    null),
-    master:     lsLoad(LS_MASTER_KEY,  null),
-    persMap_:   lsLoad(LS_PERSMAP_KEY, null),
-    tailZero:   lsLoad(LS_TZERO_KEY,   null)
-  };
+
+/* ★ [v3.7.0] 旧 localStorage キャッシュの後片付け（1回だけ）。
+   実際には保存できていなかったはずだが、部分的に残っていれば掃除する。 */
+function purgeLegacyLsCache() {
+  try {
+    ['dx_inv_master_v1','dx_inv_drop_v1','dx_inv_pers_v1',
+     'dx_inv_tzero_v1','dx_inv_cache_ts'].forEach(function(k){
+      localStorage.removeItem(k);
+    });
+  } catch(e) {}
 }
 
 /* オフライン判定 */
@@ -1251,10 +1307,10 @@ async function loadAllMaster(isReload) {
   if (_loadingMaster) return;
   _loadingMaster = true;
 
-  /* ★ [v3.2.0] オフライン時はキャッシュから即時復元 */
+  /* ★ [v3.7.0] オフライン時はIndexedDBキャッシュから即時復元 */
   if (!isReload && !isOnline()) {
-    var cached = loadMasterFromCache();
-    if (cached.master) {
+    var cached = await loadMasterFromCache();
+    if (cached && cached.master) {
       applyMasterData(cached.dropData, cached.master, cached.persMap_, cached.tailZero);
       _loadingMaster = false;
       toast('オフライン — キャッシュからマスタを復元しました', 'info');
@@ -1283,8 +1339,9 @@ async function loadAllMaster(isReload) {
 
     applyMasterData(dd, master, allPers, tailZero);
 
-    /* ★ [v3.2.0] 取得成功 → localStorageにキャッシュ保存 */
-    saveMasterCache(dd, master, allPers, tailZero);
+    /* ★ [v3.7.0] 取得成功 → IndexedDBにキャッシュ保存（await して確実に永続化） */
+    await saveMasterCache(dd, master, allPers, tailZero);
+    purgeLegacyLsCache();   /* 旧localStorageの残骸を掃除 */
 
     _loadingMaster = false;
     hideLoad();
@@ -1296,9 +1353,9 @@ async function loadAllMaster(isReload) {
     _loadingMaster = false;
     hideLoad();
 
-    /* ★ [v3.2.0] GAS失敗時 → キャッシュがあれば自動フォールバック */
-    var fb = loadMasterFromCache();
-    if (fb.master) {
+    /* ★ [v3.7.0] GAS失敗時 → IndexedDBキャッシュがあれば自動フォールバック */
+    var fb = await loadMasterFromCache();
+    if (fb && fb.master) {
       applyMasterData(fb.dropData, fb.master, fb.persMap_, fb.tailZero);
       toast('GAS接続失敗 — キャッシュから復元しました: ' + e.message, 'err');
       var mmeta3 = document.getElementById('mmeta');
@@ -2861,6 +2918,44 @@ function sw(name) {
     }
   }
   document.getElementById('main').scrollTop = 0;
+}
+
+/* ============================================================
+   ★ [v3.7.0] オフラインキャッシュ状態の確認（設定タブ）
+   IndexedDB(meta)に実際にマスタが保存できているかを可視化する。
+   旧localStorage版は保存失敗を握りつぶしていて確認手段が無かった。
+   ============================================================ */
+async function checkCacheStatus() {
+  var el = document.getElementById('cacheStatus');
+  if (el) el.textContent = '確認中…';
+  try {
+    var cached = await loadMasterFromCache();
+    if (!cached || !cached.master) {
+      if (el) el.innerHTML = '<span style="color:var(--warn);font-weight:700;">未保存</span> — オンラインで一度マスタを読み込むと保存されます';
+      return;
+    }
+    var cnt = Array.isArray(cached.master) ? cached.master.length : 0;
+    var persCnt = cached.persMap_ ? Object.keys(cached.persMap_).length : 0;
+    var tzCnt = Array.isArray(cached.tailZero) ? cached.tailZero.length : 0;
+    var when = cached.ts ? new Date(cached.ts) : null;
+    var age  = when ? Math.round((Date.now() - cached.ts) / 60000) : null;
+    var whenStr = when ? when.toLocaleString('ja-JP') : '不明';
+    var fresh = (age !== null && (Date.now() - cached.ts) < CACHE_TTL_MS);
+    /* 概算バイト数（UTF-8） */
+    var bytes = 0;
+    try { bytes = new Blob([JSON.stringify(cached.master)]).size; } catch(e) {}
+    var mb = (bytes / 1024 / 1024).toFixed(2);
+    if (el) {
+      el.innerHTML =
+        '<span style="color:var(--green);font-weight:700;">保存済み ✔</span><br>' +
+        'マスタ ' + cnt.toLocaleString() + '件（約' + mb + 'MB） / 部門 ' + persCnt + ' / 末尾0 ' + tzCnt + '件<br>' +
+        '保存日時: ' + whenStr + '（' + (age !== null ? age + '分前' : '—') + '）' +
+        (fresh ? '' : ' <span style="color:var(--warn);">※24時間超・再読込推奨</span>');
+    }
+    toast('キャッシュ保存済み: マスタ ' + cnt.toLocaleString() + '件', 'ok');
+  } catch(e) {
+    if (el) el.innerHTML = '<span style="color:var(--warn);">確認失敗: ' + h(e.message) + '</span>';
+  }
 }
 
 /* ============================================================
