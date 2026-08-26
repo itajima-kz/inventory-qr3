@@ -129,7 +129,8 @@
   select.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,107,224,.14);}
   #sei{letter-spacing:3px;font-family:monospace;font-size:17px;font-weight:700;}
   .mode-tog{display:flex;gap:6px;margin-bottom:8px;}
-  .mbtn{flex:1;padding:8px 6px;border-radius:var(--radius-xs);font-size:16px;font-weight:700;
+  .mbtn{flex:1;padding:8px 4px;border-radius:var(--radius-xs);font-size:13px;font-weight:700;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     font-family:var(--font);cursor:pointer;border:2px solid var(--blue-lt);
     background:var(--surface2);color:var(--text-light);transition:all .15s;-webkit-appearance:none;}
   .mbtn.on.jan{background:linear-gradient(135deg,#0f9e6e,#076e49);
@@ -142,16 +143,27 @@
     border-radius:var(--radius-sm);overflow:hidden;margin-bottom:7px;display:none;}
   #cv{width:100%;display:block;object-fit:cover;}
   #qc{display:none;}
-  .qrc{position:absolute;width:22px;height:22px;
+  /* ★ [v4.0.0] ⑤ 読取ガイド枠 = 実際にデコードする範囲(ROI)。
+     【旧実装の問題】枠は四隅から7pxの位置に置かれた飾りで、jsQRには
+     フレーム全体を渡していた。そのため製造指示書のようにQRが複数並ぶ
+     紙面では、狙っていない隣のQRまで読み取ってしまっていた。枠を縮める
+     だけでは何も変わらない（枠がデコード範囲を制限していなかったため）。
+     【修正】位置とサイズを updQrGuide() がJSでpx指定し、scanQR() が
+     まったく同じ矩形を切り出してデコードする。枠が嘘をつかなくなる。
+     バーコード(JAN)は横長のためROIを掛けず全画面のまま（.roi なし）。 */
+  #qrg{display:none;position:absolute;left:0;top:0;width:60%;height:60%;
+    border-radius:8px;pointer-events:none;z-index:4;}
+  #qrg.roi{box-shadow:0 0 0 2000px rgba(0,0,0,.42);}
+  .qrc{position:absolute;width:20px;height:20px;
     border-color:var(--cyan);border-style:solid;border-width:0;z-index:5;}
-  .qrc.tl{top:7px;left:7px;border-top-width:3px;border-left-width:3px;border-radius:5px 0 0 0;}
-  .qrc.tr{top:7px;right:7px;border-top-width:3px;border-right-width:3px;border-radius:0 5px 0 0;}
-  .qrc.bl{bottom:7px;left:7px;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 5px;}
-  .qrc.br{bottom:7px;right:7px;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 5px 0;}
-  #sline{position:absolute;left:10px;right:10px;height:2px;
+  .qrc.tl{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:5px 0 0 0;}
+  .qrc.tr{top:0;right:0;border-top-width:3px;border-right-width:3px;border-radius:0 5px 0 0;}
+  .qrc.bl{bottom:0;left:0;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 5px;}
+  .qrc.br{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 5px 0;}
+  #sline{position:absolute;left:0;right:0;height:2px;
     background:linear-gradient(90deg,transparent,var(--cyan),transparent);
-    animation:scanmv 2s ease-in-out infinite;pointer-events:none;z-index:4;}
-  @keyframes scanmv{0%{top:10px;opacity:.3}20%{opacity:1}80%{opacity:1}100%{top:calc(100% - 10px);opacity:.3}}
+    animation:scanmv 2s ease-in-out infinite;pointer-events:none;z-index:5;}
+  @keyframes scanmv{0%{top:0;opacity:.3}20%{opacity:1}80%{opacity:1}100%{top:calc(100% - 2px);opacity:.3}}
   #ocrg{display:none;position:absolute;left:8%;width:84%;top:12%;height:76%;
     border:2px solid #a855f7;border-radius:6px;
     box-shadow:0 0 0 2000px rgba(0,0,0,.38);pointer-events:none;z-index:4;}
@@ -460,6 +472,31 @@
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.08em;}
   .reg-sei-input:focus{border-bottom-color:var(--blue);}
+  /* ★ [v4.0.0] ③ 長さ入力（対象部材のみ表示・mm整数） */
+  .reg-len-col{flex:1;min-width:0;}
+  .reg-len-wrap{display:flex;align-items:baseline;gap:6px;min-width:0;}
+  .reg-len-input{flex:1;min-width:0;font-size:22px;font-weight:700;color:var(--filled);
+    border:none;border-bottom:2.5px solid var(--blue);background:transparent;
+    padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
+    letter-spacing:.06em;}
+  .reg-len-input:focus{border-bottom-color:var(--primary);}
+  .reg-len-input.warn{border-bottom-color:var(--warn);color:var(--warn);}
+  .reg-len-unit{font-size:13px;font-weight:700;color:var(--text-light);flex-shrink:0;}
+  /* ★ [v4.0.0] ③ 長さは対象部材では必須。未入力のあいだ出しっぱなしにする */
+  .reg-len-msg{display:none;font-size:11px;font-weight:700;color:var(--warn);margin-top:5px;}
+  .reg-len-msg.on{display:block;}
+  /* ★ [v4.0.0] ④ 特注品バナー */
+  .reg-custom-note{font-size:12px;font-weight:700;color:#5a1fd1;
+    background:rgba(123,63,242,.10);border:1.5px solid var(--purple);
+    border-radius:var(--radius-xs);padding:6px 10px;margin-bottom:10px;
+    display:flex;align-items:center;gap:5px;}
+  /* ★ [v4.0.0] ③ 修正モーダルの長さ欄 */
+  .em-len-wrap{display:flex;align-items:baseline;gap:6px;}
+  .em-len-wrap .em-input{flex:1;min-width:0;}
+  .em-len-unit{font-size:12px;font-weight:700;color:var(--text-light);flex-shrink:0;}
+  .em-len-msg{display:none;font-size:11px;font-weight:700;color:var(--warn);margin-top:5px;}
+  .em-len-msg.on{display:block;}
+  .em-input.warn{border-color:var(--warn);}
   /* 未登録時の図番・品名手入力フィールド */
   .reg-unreg-note{font-size:12px;font-weight:700;color:var(--warn);
     background:var(--warn-lt);border:1.5px solid var(--warn);
@@ -590,18 +627,21 @@
     </div>
 
     <div class="card card-scan">
-      <div class="clabel">スキャン読取（JAN / QR / OCR）</div>
+      <div class="clabel">スキャン読取（バーコード / QR / OCR）</div>
       <div class="mode-tog">
-        <button type="button" class="mbtn on jan" id="mjan" onclick="setMode('jan')">&#127991; JAN</button>
+        <button type="button" class="mbtn on jan" id="mjan" onclick="setMode('jan')">&#127991; バーコード</button>
         <button type="button" class="mbtn qr"    id="mqr"  onclick="setMode('qr')">&#128247; QR</button>
         <button type="button" class="mbtn ocr"   id="mocr" onclick="setMode('ocr')">&#128269; OCR（図番）</button>
       </div>
       <div class="cam-area" id="cama">
         <video id="cv" playsinline autoplay muted></video>
         <canvas id="qc"></canvas>
-        <div class="qrc tl"></div><div class="qrc tr"></div>
-        <div class="qrc bl"></div><div class="qrc br"></div>
-        <div id="sline"></div>
+        <!-- ★ [v4.0.0] ⑤ ガイド枠＝デコード範囲。位置・サイズは updQrGuide() がJSで設定 -->
+        <div id="qrg">
+          <div class="qrc tl"></div><div class="qrc tr"></div>
+          <div class="qrc bl"></div><div class="qrc br"></div>
+          <div id="sline"></div>
+        </div>
         <div id="ocrg"></div>
         <div id="flash"></div>
         <!-- ★ [v3.3.0] バッテリー節約インジケーター -->
@@ -628,7 +668,7 @@
         <div class="cam-ph-ico" id="ph-ico">&#128247;</div>
         <div class="cam-ph-txt" id="ph-txt">カメラを起動してQRコードをスキャン<br>または下の手入力欄に直接入力</div>
       </div>
-      <button type="button" class="scanbtn janm" id="sb-start" onclick="startCam()">&#127991; JANスキャン開始</button>
+      <button type="button" class="scanbtn janm" id="sb-start" onclick="startCam()">&#127991; バーコードスキャン開始</button>
       <button type="button" class="scanbtn stop" id="sb-stop"  onclick="stopCam()">&#9209; カメラを停止</button>
       <button type="button" class="scanbtn cap"  id="sb-cap"   onclick="doOCR()">&#128248; OCRキャプチャ</button>
       <div class="ocr-box" id="obox">
@@ -717,18 +757,25 @@
             <b>② 起動時に自動でマスタデータを取得</b><br>
             　GASへの接続はコード内に設定済みです<br><br>
             <b>③ スキャンタブでQRまたはOCRで読取</b><br>
-            　QR/JAN: 図番・製番は変更不可（マスタヒット時は品名も変更不可）<br>
-            　QR/JAN: マスタ未登録時は品名のみ手入力可<br>
+            　QR/バーコード: 図番・製番は変更不可（マスタヒット時は品名も変更不可）<br>
+            　QR/バーコード: マスタ未登録時は品名のみ手入力可<br>
             　OCR: 読取後も図番・品名・製番を手修正可<br>
             　カメラ不使用時は直接入力も可能<br><br>
             <b>④ 場所・担当者・在庫区分を選択</b><br>
             　選択値は次回起動時に自動復元されます<br><br>
             <b>⑤ 読取後に自動で登録ポップアップが開きます</b><br>
             　数量を直接入力 → 登録ボタンで保存（オフライン対応）<br>
-            　Enterキーでも登録可能。リセットで次スキャンへ<br><br>
+            　Enterキーでも登録可能。リセットで次スキャンへ<br>
+            　<b>Ｈ型鋼・Ｃ型鋼・角パイプ等は「長さ(mm)」欄が自動で出ます</b><br>
+            　（品名の先頭で判定。対象外の部材では表示されません）<br>
+            　<b>長さ欄が出た場合、長さの入力は必須です</b>（未入力だと登録できません）<br><br>
             <b>⑥ 履歴タブで一括送信</b><br>
             　GAS → スプレッドシート → ASTERIA → IBM i<br>
-            　送信エラーの分は未送信のまま残り、再送可能<br><br>
+            　送信エラーの分は未送信のまま残り、再送可能<br>
+            　<b>同じ図番でも読み取るたびに別行として追加されます</b><br>
+            　数量を直したいときは履歴タブで該当行をタップして修正<br>
+            　マスタに品名が無くK/Pで始まる図番は「特注」表示になり、<br>
+            　スプレッドシートの「棚卸データ(特注品)」へ送られます<br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
@@ -737,7 +784,11 @@
             　保存済みデータを使うため通信せず即座に立ち上がります<br>
             　（24時間経過後は自動で取り直します）<br>
             　<b>マスタを更新した直後は「再読込」を押してください</b><br>
-            　保存状態は「キャッシュ状態を確認」で検証できます
+            　保存状態は「キャッシュ状態を確認」で検証できます<br><br>
+            <b>⑨ QRは枠の中だけを読み取ります（v4.0.0〜）</b><br>
+            　製造指示書のようにQRが並ぶ紙面で隣のQRを拾わないよう、<br>
+            　画面中央の枠の内側だけをデコードします<br>
+            　バーコードは横長のため従来どおり画面全体で読み取ります
           </div>
         </div>
       </div>
@@ -746,11 +797,13 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v3.8.0<br>
+        <div class="s-info">DX棚卸アプリ v4.0.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v3.8.0: 保存済みマスタを優先利用（24時間）— 起動時のダウンロードを毎回→1日1回に削減</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v3.7.0: パディング除去でデータ削減／マスタキャッシュをIndexedDB化<br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.0.0: 同一図番の重複登録に対応／長さ(mm)入力（対象部材は必須）／特注品シート分離／QR読取範囲を枠内に限定</span><br>
+          <span style="color:#e07800;font-weight:700;">※ v4.0.0はGAS側も更新が必要です（ウェブアプリの新バージョン発行）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v3.8.0: 保存済みマスタを優先利用（24時間）<br>
+          v3.7.0: パディング除去でデータ削減／マスタキャッシュをIndexedDB化<br>
           v3.6.0: デジタルズーム反映／履歴修正の二重書込防止／図番変更時の品名再照合<br>
           v3.5.0: 場所ドロップダウンを担当者マップ由来に統一<br>
           v3.4.0: 履歴修正機能（数量修正・OCR図番修正）</span></div>
@@ -790,6 +843,10 @@
       <div class="reg-unreg-note" id="regUnregNote" style="display:none">
         ⚠ マスタ未登録 — 図番・品名を手入力してください
       </div>
+      <!-- ★ [v4.0.0] ④ 特注品バナー（マスタ未登録かつ図番がK/P始まり） -->
+      <div class="reg-custom-note" id="regCustomNote" style="display:none">
+        🏷 特注品として「棚卸データ(特注品)」シートへ登録されます
+      </div>
       <!-- フォーム行：図番（マスタヒット時は表示のみ、未登録時は入力可） -->
       <div class="reg-form-row">
         <div class="reg-form-label">図番</div>
@@ -809,6 +866,20 @@
           placeholder="品名を入力"
           rows="2"
           oninput="onRegHinmeiInput()"></textarea>
+      </div>
+      <!-- ★ [v4.0.0] ③ フォーム行：長さ（対象部材のみ表示・mm整数） -->
+      <div class="reg-form-row" id="regLenRow" style="display:none">
+        <div class="reg-form-label">長さ</div>
+        <div class="reg-len-col">
+          <div class="reg-len-wrap">
+            <input type="text" class="reg-len-input" id="regLenInput"
+              inputmode="numeric" pattern="[0-9]*" maxlength="6"
+              placeholder="例: 4000" autocomplete="off"
+              oninput="onRegLenInput()">
+            <span class="reg-len-unit">mm</span>
+          </div>
+          <div class="reg-len-msg" id="regLenMsg">⚠ この部材は長さが必須です（半角数字・mm）</div>
+        </div>
       </div>
       <!-- フォーム行：在庫区分（常時表示・必須） -->
       <div class="reg-form-row">
@@ -855,7 +926,7 @@
     <div class="em-body">
       <!-- スキャン種別タグ -->
       <span class="em-src-tag" id="emSrcTag"></span>
-      <!-- 図番（OCR時は編集可、JAN/QR時は表示のみ） -->
+      <!-- 図番（OCR時は編集可、バーコード/QR時は表示のみ） -->
       <div id="emZunoBlock">
         <div class="em-srch-row">
           <div class="em-field">
@@ -885,6 +956,17 @@
         <input type="text" class="em-input ocr-edit" id="emSeibanInput"
           autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
           placeholder="製番（任意）">
+      </div>
+      <!-- ★ [v4.0.0] ③ 長さ（対象部材のみ表示・mm整数） -->
+      <div class="em-field" id="emLenBlock" style="display:none;">
+        <div class="em-label">長さ</div>
+        <div class="em-len-wrap">
+          <input type="text" class="em-input" id="emLenInput"
+            inputmode="numeric" pattern="[0-9]*" maxlength="6"
+            placeholder="例: 4000" autocomplete="off" oninput="onEmLenInput()">
+          <span class="em-len-unit">mm</span>
+        </div>
+        <div class="em-len-msg" id="emLenMsg">⚠ この部材は長さが必須です（半角数字・mm）</div>
       </div>
       <div class="em-divider"></div>
       <!-- 数量（常時編集可） -->
@@ -917,7 +999,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxxwQ5k7J_PBfXJmTGPHgVNQADhfXekDb83m8JpUesrV2dZ8ixd9rG-KyLA5EKZfG6u/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyZyjG_GcKabu51K-yDtN9W1wpJ9S1wyok66Lif8hcMuplTVD2jtnSyH8tyyLT8_qFZ/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -930,6 +1012,26 @@ var SCAN_ASPECT_QR  = 1.333;
 
 var OCR_MAX_PX = 800;
 
+/* ★ [v4.0.0] ⑤ QR読取ROI。表示エリアの短辺に対する比率。
+   小さくするほど狙いを絞れるが、枠に収める操作は難しくなる。
+   ここ1箇所を変えれば表示枠とデコード範囲の両方が同時に変わる。 */
+var QR_ROI_RATIO = 0.60;
+
+/* ★ [v4.0.0] ③ 長さ入力の対象部材。品名の先頭がいずれかに完全一致した
+   ときだけ長さ欄を表示する。
+   ※ マスタの品名は全角スペースで固定長パディングされており、GAS側の
+      normText() が全角スペースを半角1個に畳んでいる。したがって
+      '表面処理　Ｃ型鋼' は端末には '表面処理 Ｃ型鋼' として届く。
+      比較の前に必ず normNameForMatch() を通すこと。 */
+var LENGTH_TARGET_PREFIXES = [
+  'Ｈ型鋼', 'ＬＨ鋼', 'Ｃ型鋼', '表面処理　Ｃ型鋼', '角パイプ', '平鋼',
+  '古河フォームエース', '古河　フネンエース', '古河タイコウエース',
+  '表面処理鋼板', 'ＺＡＭ', 'ＭＡＧ', 'ステンレスＳＵＳ３０４', 'ガルバリュウム'
+];
+
+/* ★ [v4.0.0] ④ 特注品の図番接頭辞（K または P で始まる） */
+var CUSTOM_CODE_RE = /^[KP]/;
+
 var masterData   = [];
 var dropData     = { departments:[], inventoryTypes:[] };
 var persMap      = {};
@@ -939,6 +1041,7 @@ var curQty     = 0;
 var curUnit    = '個';
 var curFromMst = false;
 var curScanSrc = '';
+var curIsCustom = false;   /* ★ [v4.0.0] ④ 特注品として登録するか */
 
 var mode       = 'jan';
 var camOn      = false;
@@ -1004,6 +1107,59 @@ function stripTrailingZeroSpace(code) {
 
 function stripSymbols(code) {
   return String(code).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/* ============================================================
+   ★ [v4.0.0] ③ 長さ入力の対象部材判定
+============================================================ */
+
+/* 品名の正規化（全角スペース→半角、連続空白を1つ、前後トリム）。
+   GAS側 normText() と同じ規則。ここを揃えないと、パディング除去済みの
+   '表面処理 Ｃ型鋼' が原文 '表面処理　Ｃ型鋼' と一致しなくなる。 */
+function normNameForMatch(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+var _lenPrefixes = LENGTH_TARGET_PREFIXES.map(normNameForMatch);
+
+/* 品名の先頭が対象部材のいずれかに一致するか */
+function needsLength(hinmei) {
+  var n = normNameForMatch(hinmei);
+  if (!n) return false;
+  for (var i = 0; i < _lenPrefixes.length; i++) {
+    if (_lenPrefixes[i] && n.indexOf(_lenPrefixes[i]) === 0) return true;
+  }
+  return false;
+}
+
+/* 長さの正規化（mm整数のみ。未入力は '' を返す） */
+function normLenInput(v) {
+  var s = String(v === null || v === undefined ? '' : v).replace(/[^0-9]/g, '');
+  if (!s) return '';
+  var n = parseInt(s, 10);
+  return isNaN(n) ? '' : n;
+}
+
+/* ★ [v4.0.0] ③ 長さの妥当性。対象部材では必須。
+   空欄はもちろん 0 も長さとして意味を成さないので不可とする。 */
+function isValidLen(v) {
+  var n = normLenInput(v);
+  return (n !== '' && n > 0);
+}
+
+/* ============================================================
+   ★ [v4.0.0] ④ 特注品判定
+   「マスタ照合で品名が得られず、かつ図番がK/Pで始まる」ものを特注品とし、
+   GAS側で「棚卸データ(特注品)」シートへ振り分けてもらう。
+   判定をフロントでやるのは、フロントが全マスタをメモリに持っていて
+   照合コストがゼロなのに対し、GASでやるとシート70,200行の読込が
+   毎回増えるだけだから。
+============================================================ */
+function isCustomRecord(zuno, hinmeiFromMaster) {
+  var code = stripSymbols(zuno);
+  if (!code || !CUSTOM_CODE_RE.test(code)) return false;
+  return !String(hinmeiFromMaster || '').trim();
 }
 
 /* ============================================================
@@ -1418,6 +1574,7 @@ function applyMasterData(dd, master, allPers, tailZero) {
      旧実装は getDropdowns のA列(棚卸部門)由来だったが、担当者はC列(担当者部門)から
      引くため、両列がずれると「場所を選んでも担当者が空」が起き得た。
      persMapのキー＝担当者が実在する部門なので、ここから生成すれば担当者と構造的に必ず一致する。 */
+  masterIndex = null;   /* ★ [v4.0.0] マスタが入れ替わったので索引を作り直させる */
   var depts  = Object.keys(persMap);
   var stocks = (dropData.inventoryTypes || []);
   fillSel('ds',  depts);
@@ -1532,7 +1689,7 @@ function updLock() {
 }
 
 /* ============================================================
-   モード切替（JAN / QR / OCR）
+   モード切替（バーコード / QR / OCR）
    ============================================================ */
 function setMode(m) {
   mode = m;
@@ -1542,7 +1699,7 @@ function setMode(m) {
   var sb = document.getElementById('sb-start');
   if (m === 'jan') {
     sb.className = 'scanbtn janm';
-    sb.innerHTML = '&#127991; JANスキャン開始';
+    sb.innerHTML = '&#127991; バーコードスキャン開始';
   } else if (m === 'qr') {
     sb.className = 'scanbtn qrm';
     sb.innerHTML = '&#128247; カメラを起動する';
@@ -1552,7 +1709,7 @@ function setMode(m) {
   }
   document.getElementById('ph-ico').textContent = m === 'ocr' ? '🔍' : (m === 'jan' ? '🏷️' : '📷');
   document.getElementById('ph-txt').innerHTML = m === 'jan'
-    ? 'カメラを起動してJANバーコードをスキャン<br>または下の手入力欄に直接入力'
+    ? 'カメラを起動してバーコードをスキャン<br>または下の手入力欄に直接入力'
     : m === 'qr'
     ? 'カメラを起動してQRコードをスキャン<br>または下の手入力欄に直接入力'
     : 'カメラを起動してOCRで図番を読取<br>または下の手入力欄に直接入力';
@@ -1568,12 +1725,100 @@ function setMode(m) {
   }
 }
 
+/* ============================================================
+   ★ [v4.0.0] ⑤ 読取ガイド枠 ＝ 実際にデコードする範囲(ROI)
+
+   【旧実装の問題】
+   枠は cam-area の四隅から7pxに置かれた飾りで、jsQR にはフレーム全体を
+   渡していた。つまり枠はデコード範囲を一切制限しておらず、製造指示書の
+   ように複数のQRが並ぶ紙面では隣のQRまで読んでしまっていた。
+   （枠のCSSだけを縮めても症状は変わらない。）
+
+   【修正】
+   枠の位置・大きさを qrGuideBox() が1箇所で決め、表示(updQrGuide)と
+   デコード(getQrRoi)の両方がそれを参照する。枠が嘘をつかなくなる。
+   バーコードは横長で、狭めると逆に読めなくなるため全画面のまま。
+============================================================ */
+function qrGuideBox() {
+  var wrap = document.getElementById('cama');
+  if (!wrap) return null;
+  var r = wrap.getBoundingClientRect();
+  var dispW = r.width, dispH = r.height;
+  if (!dispW || !dispH) return null;
+  if (mode === 'qr') {
+    var side = Math.round(Math.min(dispW, dispH) * QR_ROI_RATIO);
+    return { l: Math.round((dispW - side) / 2), t: Math.round((dispH - side) / 2),
+             w: side, h: side, dispW: dispW, dispH: dispH, roi: true };
+  }
+  /* バーコード: 従来どおり全画面（枠は目安。7pxのマージンだけ残す） */
+  return { l: 7, t: 7,
+           w: Math.max(1, Math.round(dispW - 14)),
+           h: Math.max(1, Math.round(dispH - 14)),
+           dispW: dispW, dispH: dispH, roi: false };
+}
+
+function updQrGuide() {
+  var g = document.getElementById('qrg');
+  if (!g) return;
+  var box = qrGuideBox();
+  if (!box) return;
+  g.classList.toggle('roi', box.roi);
+  g.style.left   = box.l + 'px';
+  g.style.top    = box.t + 'px';
+  g.style.width  = box.w + 'px';
+  g.style.height = box.h + 'px';
+}
+
+/* 表示座標(px) → 映像座標。object-fit:cover のはみ出しとデジタルズームを補正。
+   ★ [v4.0.0] capFrame(OCR) と getQrRoi(QR) の共通処理としてここに集約した。 */
+function mapGuideToVideo(vw, vh, gL, gT, gW, gH, dispW, dispH) {
+  var vAsp = vw / vh, dAsp = dispW / dispH;
+  var scale, ox, oy;
+  if (vAsp > dAsp) { scale = dispH / vh; ox = (vw * scale - dispW) / 2; oy = 0; }
+  else             { scale = dispW / vw; ox = 0; oy = (vh * scale - dispH) / 2; }
+  var sx = (gL + ox) / scale;
+  var sy = (gT + oy) / scale;
+  var sw = gW / scale;
+  var sh = gH / scale;
+
+  /* ★ [v3.6.0] デジタルズーム中の座標補正。
+     video に CSS scale(z) が中心基点でかかっているため、画面に見えている
+     のは映像中央の 1/z 領域。ガイド枠の映像座標も中心方向へ 1/z に縮めて
+     対応付けないと、ズーム時に「枠に入れたのに枠外を切り出す」ことになる。 */
+  if (isDigitalZoom()) {
+    var z  = _curZoom;
+    var cx = sx + sw / 2, cy = sy + sh / 2;
+    sw = sw / z;
+    sh = sh / z;
+    cx = vw / 2 + (cx - vw / 2) / z;
+    cy = vh / 2 + (cy - vh / 2) / z;
+    sx = cx - sw / 2;
+    sy = cy - sh / 2;
+  }
+  sx = Math.round(sx); sy = Math.round(sy);
+  sw = Math.round(sw); sh = Math.round(sh);
+  sx = Math.max(0, Math.min(vw - 1, sx));
+  sy = Math.max(0, Math.min(vh - 1, sy));
+  sw = Math.max(1, Math.min(vw - sx, sw));
+  sh = Math.max(1, Math.min(vh - sy, sh));
+  return { sx: sx, sy: sy, sw: sw, sh: sh };
+}
+
+/* QRデコード用のROI（映像座標）。枠が取れないときは全画面へフォールバック。 */
+function getQrRoi(v) {
+  var vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh) return null;
+  var box = qrGuideBox();
+  if (!box || !box.roi) return { sx: 0, sy: 0, sw: vw, sh: vh };
+  return mapGuideToVideo(vw, vh, box.l, box.t, box.w, box.h, box.dispW, box.dispH);
+}
+
 function updGuide() {
   var isBarcode = (mode === 'qr' || mode === 'jan');
-  var corners = document.querySelectorAll('.qrc');
-  for (var i = 0; i < corners.length; i++) corners[i].style.display = isBarcode ? '' : 'none';
-  document.getElementById('sline').style.display = isBarcode ? '' : 'none';
-  document.getElementById('ocrg').style.display  = isBarcode ? 'none' : 'block';
+  var g = document.getElementById('qrg');
+  if (g) g.style.display = isBarcode ? 'block' : 'none';
+  document.getElementById('ocrg').style.display = isBarcode ? 'none' : 'block';
+  updQrGuide();
 }
 
 /* ============================================================
@@ -1626,6 +1871,8 @@ async function startCam() {
       }
       v.style.height    = dh + 'px';
       wrap.style.height = dh + 'px';
+      /* ★ [v4.0.0] ⑤ 表示サイズが確定してからガイド枠(=ROI)を再計算する */
+      updQrGuide();
     };
     _setCamH = setH;
     v.addEventListener('loadedmetadata', setH, { once: true });
@@ -1852,12 +2099,15 @@ function drawScanFrame(v, w, hh) {
 function scanQR() {
   var v = document.getElementById('cv');
   if (!v || v.readyState < 2) return;
-  var w = v.videoWidth, hh = v.videoHeight;
-  if (!w || !hh) return;
-  /* ★ [v3.6.0] デジタルズームをスキャン画像にも反映 */
-  var sc = drawScanFrame(v, w, hh);
-  var img = sc.ctx.getImageData(0, 0, w, hh);
-  var res = jsQR(img.data, w, hh, { inversionAttempts: 'dontInvert' });
+  /* ★ [v4.0.0] ⑤ ガイド枠とまったく同じ矩形だけを切り出してデコードする。
+     旧実装はフレーム全体を jsQR に渡していたため、狙っていない隣のQRを
+     拾ってしまっていた。ROIはデジタルズーム補正込み。 */
+  var roi = getQrRoi(v);
+  if (!roi) return;
+  var sc = getScanCanvas(roi.sw, roi.sh);
+  sc.ctx.drawImage(v, roi.sx, roi.sy, roi.sw, roi.sh, 0, 0, roi.sw, roi.sh);
+  var img = sc.ctx.getImageData(0, 0, roi.sw, roi.sh);
+  var res = jsQR(img.data, roi.sw, roi.sh, { inversionAttempts: 'dontInvert' });
   if (!res || !res.data) return;
   var code = res.data.trim();
   code = stripTrailingZeroSpace(code);
@@ -1975,36 +2225,11 @@ function capFrame() {
   var dispW = wrap.getBoundingClientRect().width;
   var dispH = dispW / SCAN_ASPECT_OCR;
   var gL = 0.08 * dispW, gT = 0.12 * dispH, gW = 0.84 * dispW, gH = 0.76 * dispH;
-  var vAsp = vw / vh, dAsp = SCAN_ASPECT_OCR;
-  var scale, ox, oy;
-  if (vAsp > dAsp) { scale = dispH / vh; ox = (vw * scale - dispW) / 2; oy = 0; }
-  else             { scale = dispW / vw; ox = 0; oy = (vh * scale - dispH) / 2; }
-  var sx = Math.round((gL + ox) / scale);
-  var sy = Math.round((gT + oy) / scale);
-  var sw = Math.round(gW / scale);
-  var sh = Math.round(gH / scale);
-
-  /* ★ [v3.6.0] デジタルズーム中の座標補正。
-     video に CSS scale(z) が中心基点でかかっているため、画面に見えている
-     のは映像中央の 1/z 領域。ガイド枠の映像座標も中心方向へ 1/z に縮めて
-     対応付けないと、ズーム時に「枠に入れたのに枠外を切り出す」ことになる。 */
-  if (isDigitalZoom()) {
-    var z  = _curZoom;
-    var cx = sx + sw / 2, cy = sy + sh / 2;
-    sw = sw / z;
-    sh = sh / z;
-    cx = vw / 2 + (cx - vw / 2) / z;
-    cy = vh / 2 + (cy - vh / 2) / z;
-    sx = Math.round(cx - sw / 2);
-    sy = Math.round(cy - sh / 2);
-    sw = Math.round(sw);
-    sh = Math.round(sh);
-  }
-
-  sx = Math.max(0, Math.min(vw - 1, sx));
-  sy = Math.max(0, Math.min(vh - 1, sy));
-  sw = Math.max(1, Math.min(vw - sx, sw));
-  sh = Math.max(1, Math.min(vh - sy, sh));
+  /* ★ [v4.0.0] 表示座標→映像座標の変換（object-fit:cover のはみ出し補正と
+     デジタルズーム補正）は mapGuideToVideo() に集約した。
+     QR側のROI切り出しとまったく同じ計算を通るので、片方だけ壊れることがない。 */
+  var r  = mapGuideToVideo(vw, vh, gL, gT, gW, gH, dispW, dispH);
+  var sx = r.sx, sy = r.sy, sw = r.sw, sh = r.sh;
   var full = document.createElement('canvas'); full.width = vw; full.height = vh;
   full.getContext('2d').drawImage(v, 0, 0, vw, vh);
   var crop = document.createElement('canvas'); crop.width = sw; crop.height = sh;
@@ -2072,13 +2297,24 @@ function opiBlur() {
    applyCode / emSearchMaster / saveEditModal から共通で使う。
    照合キーはハイフン等を除去した英数字のみ（IBM iマスタに合わせる）。
    ============================================================ */
+/* ★ [v4.0.0] マスタの正規化キー索引。
+   旧実装は呼ばれるたびに masterData 70,200件をリニア走査していた。
+   スキャン毎に数回、さらにv4.0.0では修正モーダルの図番入力1文字ごとにも
+   引くようになるため、明確に遅い。applyMasterData で索引を無効化し、
+   最初の照合時に1度だけMapを作る。重複コードは先勝ち＝旧実装と同じ結果。 */
+var masterIndex = null;
+function buildMasterIndex() {
+  masterIndex = new Map();
+  for (var i = 0; i < masterData.length; i++) {
+    var k = stripSymbols(masterData[i].product_code);
+    if (k && !masterIndex.has(k)) masterIndex.set(k, masterData[i]);
+  }
+}
 function findMasterByCode(code) {
   var key = stripSymbols(code);
   if (!key) return null;
-  for (var i = 0; i < masterData.length; i++) {
-    if (stripSymbols(masterData[i].product_code) === key) return masterData[i];
-  }
-  return null;
+  if (!masterIndex) buildMasterIndex();
+  return masterIndex.get(key) || null;
 }
 
 /* ============================================================
@@ -2138,6 +2374,10 @@ function applyCode(code, src) {
     he.placeholder = '（マスタ未登録 — 品名を手入力してください）';
     toast('マスタ未登録です。品名を手入力してください', 'info');
   }
+
+  /* ★ [v4.0.0] ④ 特注品判定（マスタで品名が得られず、かつ図番がK/P始まり）。
+     ここで確定させ、登録モーダルのバナー表示と rec.is_custom に使う。 */
+  curIsCustom = isCustomRecord(ze.value, hit ? hit.product_name : '');
 
   /* ★ [v3.0.1] JAN/QR読取時にOCR結果ボックスをクリア（③バグ修正） */
   if (src === 'jan' || src === 'qr') {
@@ -2291,6 +2531,10 @@ function openRegModal(isHit) {
     inpH.value = hinmei;
   }
 
+  /* ★ [v4.0.0] ③④ 長さ欄の表示可否と特注品バナーを更新 */
+  updRegLenRow(true);
+  updRegCustomNote();
+
   /* --- 在庫区分セレクトをモーダル用に同期 --- */
   var itsSrc = document.getElementById('its');
   var itsDst = document.getElementById('regItsSelect');
@@ -2324,10 +2568,20 @@ function openRegModal(isHit) {
 
   document.getElementById('regmover').classList.add('on');
 
-  /* フォーカス: 未登録なら図番入力欄へ、ヒット時は数量へ */
+  /* ★ [v4.0.0] モーダルが開いた状態で登録ボタンの活性を計算し直す。
+     updReg() は在庫区分をモーダル側のセレクトから読むため .on を付けた後に
+     呼ぶ必要がある。③の長さ必須判定もここで初めて効く。 */
+  syncRegLen();
+
+  /* フォーカス: 未登録なら図番入力欄へ、長さ対象なら長さへ、それ以外は数量へ
+     ★ [v4.0.0] ③ 長さは数量より前に入るので、対象部材ではここから始める */
   setTimeout(function() {
+    var lenRow = document.getElementById('regLenRow');
+    var lenInp = document.getElementById('regLenInput');
     if (!hitFlag && inpZ) {
       inpZ.focus();
+    } else if (lenRow && lenRow.style.display !== 'none' && lenInp) {
+      lenInp.focus(); lenInp.select();
     } else {
       inp.focus(); inp.select();
     }
@@ -2343,6 +2597,7 @@ function onRegZunoInput() {
   var v = (document.getElementById('regZunoInput').value || '').toUpperCase();
   document.getElementById('regZunoInput').value = v;
   document.getElementById('zuno').value = v;
+  updRegCustomNote();   /* ★ [v4.0.0] ④ 図番を打ち替えたら特注品判定も追従させる */
   updReg();
 }
 
@@ -2350,7 +2605,56 @@ function onRegZunoInput() {
 function onRegHinmeiInput() {
   var v = document.getElementById('regHinmeiInput').value || '';
   document.getElementById('hinmei').value = v;
+  updRegLenRow();       /* ★ [v4.0.0] ③ 手入力の品名でも長さ欄を追従させる */
   updReg();
+}
+
+/* ============================================================
+   ★ [v4.0.0] ③ 長さ欄（対象部材のみ表示・mm整数）
+   品名の先頭が Ｈ型鋼 / Ｃ型鋼 / 角パイプ … のいずれかに一致したときだけ出す。
+   対象外に変わったら値も必ず捨てる（前の部材の長さが残ると誤登録になる）。
+   ※ 未入力でも登録はできる。下線をオレンジにして気付かせるだけに留めている。
+     必須にしたい場合は updReg() 側で ok の条件に加えること。
+============================================================ */
+function updRegLenRow(reset) {
+  var row = document.getElementById('regLenRow');
+  var inp = document.getElementById('regLenInput');
+  if (!row || !inp) return;
+  var show = needsLength(document.getElementById('hinmei').value);
+  row.style.display = show ? '' : 'none';
+  if (reset || !show) inp.value = '';
+  syncRegLen();
+}
+
+/* ★ [v4.0.0] ③ 長さの入力状態を、見た目・警告メッセージ・登録ボタンの活性に
+   まとめて反映する。長さ欄が出ている＝対象部材なので長さは必須。
+   updReg() を呼ぶが updReg() 側は syncRegLen() を呼ばないので再帰しない。 */
+function syncRegLen() {
+  var row = document.getElementById('regLenRow');
+  var inp = document.getElementById('regLenInput');
+  var msg = document.getElementById('regLenMsg');
+  if (!row || !inp) return;
+  var bad = (row.style.display !== 'none') && !isValidLen(inp.value);
+  inp.className = 'reg-len-input' + (bad ? ' warn' : '');
+  if (msg) msg.className = 'reg-len-msg' + (bad ? ' on' : '');
+  updReg();
+}
+
+function onRegLenInput() {
+  var el = document.getElementById('regLenInput');
+  var cleaned = el.value.replace(/[^0-9]/g, '');
+  if (el.value !== cleaned) el.value = cleaned;
+  syncRegLen();
+}
+
+/* ★ [v4.0.0] ④ 特注品バナーの表示切替。curIsCustom もここで確定させる。 */
+function updRegCustomNote() {
+  var note = document.getElementById('regCustomNote');
+  if (!note) return;
+  var zuno = document.getElementById('zuno').value;
+  var hit  = findMasterByCode(zuno);
+  curIsCustom = isCustomRecord(zuno, hit ? hit.product_name : '');
+  note.style.display = curIsCustom ? 'flex' : 'none';
 }
 
 /* Enterキーで登録 */
@@ -2391,6 +2695,10 @@ function clearRegModal() {
   /* 本体側のsei欄も合わせてクリア */
   var seiMain = document.getElementById('sei');
   if (seiMain) seiMain.value = '';
+  /* ★ [v4.0.0] ③ 長さもクリア（必須警告はここで再表示される） */
+  var lenInp = document.getElementById('regLenInput');
+  if (lenInp) lenInp.value = '';
+  syncRegLen();
 }
 
 /* ============================================================
@@ -2416,6 +2724,14 @@ function updReg() {
   } else {
     ok = !!(z && d && p && t);
   }
+  /* ★ [v4.0.0] ③ 長さ欄が出ている＝対象部材。長さは必須。
+     未入力・0のままでは登録ボタンを押せなくする（regData() でも同判定で止める）。 */
+  var lenRow = document.getElementById('regLenRow');
+  if (lenRow && lenRow.style.display !== 'none') {
+    var lenInpChk = document.getElementById('regLenInput');
+    if (!isValidLen(lenInpChk ? lenInpChk.value : '')) ok = false;
+  }
+
   var mb = document.getElementById('regModalBtn');
   if (mb) mb.disabled = !ok;
 }
@@ -2431,6 +2747,21 @@ async function regData() {
   if (qtyVal < 0) {
     toast('0以上の数値を入力してください', 'err'); return;
   }
+
+  /* ★ [v4.0.0] ③ 長さは対象部材では必須。
+     数量欄のEnterキーからは regData() が直接呼ばれ、登録ボタンの disabled を
+     経由しない。ボタンの活性だけに頼らずここでも必ず止める。 */
+  var lenRowEl = document.getElementById('regLenRow');
+  if (lenRowEl && lenRowEl.style.display !== 'none') {
+    var lenInpEl = document.getElementById('regLenInput');
+    if (!isValidLen(lenInpEl ? lenInpEl.value : '')) {
+      syncRegLen();
+      toast('長さ(mm)を入力してください — この部材は長さが必須です', 'err');
+      if (lenInpEl) { lenInpEl.focus(); lenInpEl.select(); }
+      return;
+    }
+  }
+
   curQty = qtyVal;
 
   /* ★ [v3.1.5] 未登録時: モーダルの図番・品名入力値を本体欄に確実に反映 */
@@ -2454,6 +2785,15 @@ async function regData() {
   var sizeHit = findMasterByCode(zuno);
   var size    = sizeHit ? (sizeHit.size || '') : '';
 
+  /* ★ [v4.0.0] ③ 長さ（対象部材のみ）。対象外なら必ず空にする。 */
+  var hinmeiVal = document.getElementById('hinmei').value.trim();
+  var lenEl     = document.getElementById('regLenInput');
+  var lenVal    = needsLength(hinmeiVal) ? normLenInput(lenEl ? lenEl.value : '') : '';
+
+  /* ★ [v4.0.0] ④ 特注品フラグ。GAS側の書き込み先シートを決める。
+     マスタ照合で品名が得られず、かつ図番がK/Pで始まるものが特注品。 */
+  var isCustom = isCustomRecord(zuno, sizeHit ? sizeHit.product_name : '');
+
   /* ★ [v3.1.0] OCR時はモーダルの製番入力欄から取得、それ以外は元のsei欄 */
   var seiVal = '';
   if (curScanSrc === 'ocr') {
@@ -2471,8 +2811,9 @@ async function regData() {
     time:          pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
     zuno:          zuno,
     seiban:        seiVal,
-    hinmei:        document.getElementById('hinmei').value.trim(),
+    hinmei:        hinmeiVal,
     size:          size,
+    length:        lenVal,          /* ★ [v4.0.0] ③ mm整数。対象外部材は '' */
     quantity:      curQty,
     unit:          curUnit,
     department:    document.getElementById('ds').value,
@@ -2480,6 +2821,7 @@ async function regData() {
     inventoryType: document.getElementById('its').value,
     scanned_at:    now.toISOString(),
     scan_src:      curScanSrc || 'jan',   /* ★ [v3.4.0] スキャン種別（jan/qr/ocr）を保存 */
+    is_custom:     isCustom ? 1 : 0,      /* ★ [v4.0.0] ④ 1なら特注品シートへ */
     sent_flag:     0,
     last_error:    ''       /* ★ [Bug-6] エラー情報を保持 */
   };
@@ -2493,7 +2835,10 @@ async function regData() {
   */
   closeRegModal();
   beepReg();   /* ★ [v3.3.1] 登録完了音（スキャン音と区別できる2音） */
-  toast('登録しました ✔  ' + rec.zuno + '  ' + rec.quantity + (rec.unit || '個'), 'ok');
+  toast('登録しました ✔  ' + rec.zuno
+      + (rec.length !== '' ? '  ' + rec.length + 'mm' : '')
+      + '  ' + rec.quantity + (rec.unit || '個')
+      + (rec.is_custom ? '（特注品）' : ''), 'ok');
   resetScan();
 }
 
@@ -2533,7 +2878,15 @@ function resetScan() {
   document.getElementById('its').value = savedItype;
 
   document.getElementById('sb-msrch').style.display = 'none';
-  curQty = 0; curUnit = '個'; curFromMst = false; curScanSrc = '';
+  /* ★ [v4.0.0] ③④ 長さ欄・特注品バナーも初期化する。
+     残しておくと次の部材に前の長さが引き継がれて誤登録になる。 */
+  var lenEl0 = document.getElementById('regLenInput');
+  if (lenEl0) { lenEl0.value = ''; lenEl0.className = 'reg-len-input'; }
+  var lenRow0 = document.getElementById('regLenRow');
+  if (lenRow0) lenRow0.style.display = 'none';
+  var cNote0 = document.getElementById('regCustomNote');
+  if (cNote0) cNote0.style.display = 'none';
+  curQty = 0; curUnit = '個'; curFromMst = false; curScanSrc = ''; curIsCustom = false;
   updReg();
 }
 function clrInfo() { resetScan(); toast('登録情報をクリアしました', 'ok'); }
@@ -2558,15 +2911,20 @@ async function rendHist() {
     if (i.sent_flag) classes += ' sent';
     else if (hasError) classes += ' errflag';
     /* ★ [v3.4.0] scan_srcタグ */
-    var srcLabel = i.scan_src === 'ocr' ? '🔬OCR' : (i.scan_src === 'qr' ? '📷QR' : '🏷JAN');
+    var srcLabel = i.scan_src === 'ocr' ? '🔬OCR' : (i.scan_src === 'qr' ? '📷QR' : '🏷バーコード');
+    /* ★ [v4.0.0] ④ 特注品は別シートへ送られるので履歴上でも区別できるようにする */
+    var customTag = i.is_custom
+      ? ' <span style="font-size:9px;font-weight:700;color:#5a1fd1;background:rgba(123,63,242,.14);border-radius:4px;padding:1px 4px;">特注</span>'
+      : '';
     /* ★ [v3.4.0] タップで修正モーダルを開く。data-idにIndexedDB keyを付与 */
     return '<div class="' + classes + '" onclick="openEditModal(' + i.id + ')">' +
       '<div class="hi-ico">' + (i.sent_flag ? '&#9989;' : (hasError ? '&#9888;' : '&#128230;')) + '</div>' +
       '<div class="hi-info">' +
-        '<div class="hi-code">' + h(i.zuno) + ' <span style="font-size:9px;opacity:.7;">' + srcLabel + '</span></div>' +
+        '<div class="hi-code">' + h(i.zuno) + ' <span style="font-size:9px;opacity:.7;">' + srcLabel + '</span>' + customTag + '</div>' +
         '<div class="hi-name">' + h(i.hinmei || '—') + '</div>' +
         '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + h(i.department) + ' / ' + h(i.personnel) +
-          (i.seiban ? ' / 製番:' + h(i.seiban) : '') + '</div>' +
+          (i.seiban ? ' / 製番:' + h(i.seiban) : '') +
+          (i.length ? ' / 長さ:' + h(i.length) + 'mm' : '') + '</div>' +
         (hasError ? '<div class="hi-err">⚠ ' + h(i.last_error) + '</div>' : '') +
       '</div>' +
       '<div class="hi-right">' +
@@ -2612,7 +2970,7 @@ async function openEditModal(id) {
 
   /* スキャン種別タグ */
   var tag = document.getElementById('emSrcTag');
-  var srcMap = { jan: 'JAN バーコード', qr: 'QR コード', ocr: 'OCR（図番認識）' };
+  var srcMap = { jan: 'バーコード', qr: 'QR コード', ocr: 'OCR（図番認識）' };
   var srcCls = item.scan_src || 'jan';
   tag.textContent = srcMap[srcCls] || srcCls;
   tag.className = 'em-src-tag ' + srcCls;
@@ -2641,9 +2999,13 @@ async function openEditModal(id) {
   qtyInp.value = (item.quantity > 0) ? item.quantity : '';
   document.getElementById('emUnitLabel').textContent = item.unit || '個';
 
+  /* ★ [v4.0.0] ③ 長さ（対象部材のみ） */
+  updEmLenRow(item.hinmei, item.length);
+
   /* メタ */
   document.getElementById('emMeta').textContent =
-    (item.department || '') + ' / ' + (item.personnel || '') + ' / ' + (item.inventoryType || '');
+    (item.department || '') + ' / ' + (item.personnel || '') + ' / ' + (item.inventoryType || '')
+    + (item.is_custom ? ' / 特注品' : '');
 
   updEmSaveBtn();
 
@@ -2660,6 +3022,41 @@ async function openEditModal(id) {
   }, 80);
 }
 
+/* ============================================================
+   ★ [v4.0.0] ③ 修正モーダルの長さ欄
+   品名が対象部材のときだけ表示する。対象外に変わったら値も捨てる。
+============================================================ */
+function updEmLenRow(hinmei, lenVal) {
+  var blk = document.getElementById('emLenBlock');
+  var inp = document.getElementById('emLenInput');
+  if (!blk || !inp) return;
+  var show = needsLength(hinmei);
+  blk.style.display = show ? '' : 'none';
+  inp.value = show ? ((lenVal === undefined || lenVal === null) ? '' : String(lenVal)) : '';
+  syncEmLen();
+}
+
+/* ★ [v4.0.0] ③ 修正側でも長さを必須にする。
+   ここを緩めると「登録時は必須なのに修正で空にできる」抜け道になり、
+   結局シートに長さ空欄の対象部材が入ってしまう。 */
+function syncEmLen() {
+  var blk = document.getElementById('emLenBlock');
+  var inp = document.getElementById('emLenInput');
+  var msg = document.getElementById('emLenMsg');
+  if (!blk || !inp) return;
+  var bad = (blk.style.display !== 'none') && !isValidLen(inp.value);
+  inp.className = 'em-input' + (bad ? ' warn' : '');
+  if (msg) msg.className = 'em-len-msg' + (bad ? ' on' : '');
+}
+
+function onEmLenInput() {
+  var el = document.getElementById('emLenInput');
+  var cleaned = el.value.replace(/[^0-9]/g, '');
+  if (el.value !== cleaned) el.value = cleaned;
+  syncEmLen();
+  updEmSaveBtn();
+}
+
 /* 保存ボタン活性判定 */
 function updEmSaveBtn() {
   var btn = document.getElementById('emSaveBtn');
@@ -2670,6 +3067,11 @@ function updEmSaveBtn() {
   if (_editItem.scan_src === 'ocr') {
     var z = document.getElementById('emZunoInput').value.trim();
     ok = ok && z.length > 0;
+  }
+  /* ★ [v4.0.0] ③ 長さ欄が出ている＝対象部材。長さは必須。 */
+  var lenBlk = document.getElementById('emLenBlock');
+  if (lenBlk && lenBlk.style.display !== 'none') {
+    ok = ok && isValidLen(document.getElementById('emLenInput').value);
   }
   btn.disabled = !ok;
 }
@@ -2696,6 +3098,18 @@ function onEmZunoInput() {
     hinmeiEl.textContent = _editItem ? (_editItem.hinmei || '—') : '—';
     hinmeiEl.className = 'em-val';
   }
+
+  /* ★ [v4.0.0] ③ 新しい図番のマスタを引いて長さ欄を追従させる。
+     findMasterByCode は v4.0.0 でMap索引化したので1文字ごとに呼んでも軽い
+     （旧実装は70,200件のリニア走査で、入力のたびに走らせるのは非現実的だった）。 */
+  var changed  = !!(_editItem && cur && cur !== org);
+  var liveHit  = changed ? findMasterByCode(cur) : null;
+  var liveName = changed ? (liveHit ? liveHit.product_name : '')
+                         : (_editItem ? _editItem.hinmei : '');
+  var lenInp   = document.getElementById('emLenInput');
+  updEmLenRow(liveName, (lenInp && lenInp.value) ? lenInp.value
+                        : (_editItem ? _editItem.length : ''));
+
   updEmSaveBtn();
 }
 
@@ -2725,6 +3139,13 @@ function emSearchMaster() {
     hinmeiEl.className = 'em-val cleared';
     toast('マスタに見つかりません', 'info');
   }
+
+  /* ★ [v4.0.0] ③ ヒット結果の品名で長さ欄を切り替える */
+  var lenInp2 = document.getElementById('emLenInput');
+  updEmLenRow(hit ? hit.product_name : '',
+              (lenInp2 && lenInp2.value) ? lenInp2.value
+              : (_editItem ? _editItem.length : ''));
+
   updEmSaveBtn();
 }
 
@@ -2748,6 +3169,18 @@ async function saveEditModal() {
   var newQty = parseInt(document.getElementById('emQtyInput').value, 10);
   if (isNaN(newQty) || newQty < 0) {
     toast('0以上の数値を入力してください', 'err'); return;
+  }
+
+  /* ★ [v4.0.0] ③ 長さは対象部材では必須（保存ボタンの活性に加えた二重の防波堤） */
+  var emLenBlk = document.getElementById('emLenBlock');
+  if (emLenBlk && emLenBlk.style.display !== 'none') {
+    var emLenEl = document.getElementById('emLenInput');
+    if (!isValidLen(emLenEl ? emLenEl.value : '')) {
+      syncEmLen();
+      toast('長さ(mm)を入力してください — この部材は長さが必須です', 'err');
+      if (emLenEl) { emLenEl.focus(); emLenEl.select(); }
+      return;
+    }
   }
 
   /* 修正前の状態をコピー（GASへ旧データを渡すため） */
@@ -2791,6 +3224,20 @@ async function saveEditModal() {
     }
   }
 
+  /* ★ [v4.0.0] ③ 長さ。品名が対象部材でなくなったら必ず空にする
+     （図番を変えて別部材になったのに前の長さが残ると誤登録になる）。 */
+  var emLen = document.getElementById('emLenInput');
+  _editItem.length = needsLength(_editItem.hinmei)
+    ? normLenInput(emLen ? emLen.value : '')
+    : '';
+
+  /* ★ [v4.0.0] ④ 特注品フラグを引き直す。
+     図番の修正で通常品⇔特注品が入れ替わると書き込み先シートが変わるため、
+     GAS側の update_item にシート間移動をさせる必要がある。 */
+  var custHit = findMasterByCode(_editItem.zuno);
+  _editItem.is_custom =
+    isCustomRecord(_editItem.zuno, custHit ? custHit.product_name : '') ? 1 : 0;
+
   /* 修正時刻を記録 */
   _editItem.modified_at  = new Date().toISOString();
   /* 送信済みでも修正したら再送信対象に戻す */
@@ -2818,8 +3265,11 @@ async function saveEditModal() {
     gasWithRetry(function() {
       return gasPost({
         action:  'update_item',
-        oldItem: oldItem,
-        newItem: savedItem
+        /* ★ [v4.0.0] 送信形（length / isCustom を含む）に揃えて渡す。
+           GASは oldItem.isCustom で旧行のあるシートを、newItem.isCustom で
+           書き込み先シートを判断する。 */
+        oldItem: toSendPayload(oldItem),
+        newItem: toSendPayload(savedItem)
       });
     }).catch(function(e) {
       toast('GAS同期失敗（次回一括送信時に再送されます）: ' + e.message, 'info');
@@ -2834,6 +3284,30 @@ async function saveEditModal() {
    - success: sent_flag=1（送信済み扱い）
    - error:   sent_flag=0 のまま（未送信のまま残し、再送可能に）
    ============================================================ */
+/* ============================================================
+   ★ [v4.0.0] IndexedDBレコード → GAS送信用オブジェクト
+
+   sendData（一括送信）と saveEditModal（1件上書き）で形が食い違うと、
+   GAS側の複合キーが一致せず重複行の原因になる。1箇所に集約しておく。
+   is_custom(0/1) は GAS側の期待するキー名 isCustom に変換する。
+============================================================ */
+function toSendPayload(i) {
+  return {
+    date:          i.date,
+    time:          i.time,
+    zuno:          i.zuno,
+    seiban:        i.seiban || '',
+    hinmei:        i.hinmei || '',
+    size:          i.size   || '',
+    length:        (i.length === undefined || i.length === null) ? '' : i.length,
+    quantity:      i.quantity,
+    department:    i.department,
+    personnel:     i.personnel,
+    inventoryType: i.inventoryType,
+    isCustom:      i.is_custom ? 1 : 0
+  };
+}
+
 async function sendData() {
   var all  = await dbA('inv');
   var pend = all.filter(function(i) { return i.sent_flag === 0; });
@@ -2841,13 +3315,7 @@ async function sendData() {
   showLoad('送信中… ' + pend.length + '件');
   var payload = {
     action: 'register_batch',
-    items: pend.map(function(i) {
-      return {
-        date: i.date, time: i.time, zuno: i.zuno, seiban: i.seiban || '',
-        hinmei: i.hinmei || '', size: i.size || '', quantity: i.quantity,
-        department: i.department, personnel: i.personnel, inventoryType: i.inventoryType
-      };
-    })
+    items: pend.map(toSendPayload)
   };
   try {
     var res = await gasWithRetry(function(){ return gasPost(payload); });
@@ -3035,6 +3503,8 @@ function syncHdr() {
   document.getElementById('main').style.paddingTop = '';
 }
 window.addEventListener('resize', syncHdr);
+/* ★ [v4.0.0] ⑤ 画面サイズが変わるとROIの表示座標も変わるので追従させる */
+window.addEventListener('resize', function() { if (camOn) updQrGuide(); });
 window.addEventListener('orientationchange', syncHdr);
 
 var _tt;
