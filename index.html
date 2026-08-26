@@ -419,7 +419,7 @@
   .reg-modal-header{
     background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     border-radius:20px 20px 0 0;
-    padding:13px 16px 11px;
+    padding:10px 14px 9px;
     display:flex;align-items:center;justify-content:space-between;
     gap:8px;
     position:sticky;top:0;z-index:1;}
@@ -437,35 +437,36 @@
     color:#fff;cursor:pointer;padding:5px 10px;border-radius:8px;
     -webkit-appearance:none;touch-action:manipulation;letter-spacing:.04em;}
   .reg-hdr-clr:active{background:rgba(255,255,255,.35);}
-  /* ボディ */
-  .reg-modal-body{padding:14px 16px 8px;}
+  /* ボディ
+     ★ [v4.0.0] ③の長さ行が増えた分、モーダル全体を縦に約130px圧縮した。
+        登録ボタンまでスクロールしないと押せない状態を解消するため。 */
+  .reg-modal-body{padding:10px 14px 6px;}
   /* 場所・担当者バッジ行 */
-  .reg-op-row{display:flex;gap:8px;margin-bottom:16px;}
+  .reg-op-row{display:flex;gap:8px;margin-bottom:10px;}
   .reg-op-badge{
     flex:1;
     background:linear-gradient(135deg,var(--primary),var(--blue));
-    color:#fff;font-size:20px;font-weight:700;
-    padding:10px 12px;border-radius:22px;
+    color:#fff;font-size:17px;font-weight:700;
+    padding:7px 10px;border-radius:20px;
     letter-spacing:.04em;text-align:center;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .reg-op-badge.empty{background:var(--warn);}
   /* フォーム行（ラベル横並び） */
-  .reg-form-row{display:flex;align-items:flex-start;gap:12px;
-    border-bottom:1px solid var(--blue-lt);padding:13px 0;}
+  .reg-form-row{display:flex;align-items:flex-start;gap:10px;
+    border-bottom:1px solid var(--blue-lt);padding:8px 0;}
   .reg-form-row:last-of-type{border-bottom:none;}
   /* ラベル */
-  .reg-form-label{font-size:17px;font-weight:700;color:var(--text-light);
-    min-width:58px;padding-top:2px;letter-spacing:.04em;flex-shrink:0;}
+  .reg-form-label{font-size:15px;font-weight:700;color:var(--text-light);
+    min-width:52px;padding-top:2px;letter-spacing:.04em;flex-shrink:0;}
   /* 値 */
-  .reg-form-val{flex:1;font-size:22px;font-weight:600;color:var(--text);
-    line-height:1.45;word-break:break-all;}
+  .reg-form-val{flex:1;font-size:19px;font-weight:600;color:var(--text);
+    line-height:1.35;word-break:break-all;}
   .reg-form-val.warn{color:var(--warn);}
   .reg-form-val.filled{color:var(--filled);}
-  /* 品名：2行固定 */
+  /* 品名：最大2行（★ [v4.0.0] min-height を外し、短い品名では1行分に縮むようにした） */
   .reg-form-val.hinmei{
     display:-webkit-box;-webkit-box-orient:vertical;
-    -webkit-line-clamp:2;overflow:hidden;
-    min-height:calc(1.45em * 2);}
+    -webkit-line-clamp:2;overflow:hidden;}
   /* 製番（OCR時のみ入力可） */
   .reg-sei-input{width:100%;font-size:16px;font-weight:500;color:var(--text);
     border:none;border-bottom:2px solid var(--blue-lt);background:transparent;
@@ -475,7 +476,7 @@
   /* ★ [v4.0.0] ③ 長さ入力（対象部材のみ表示・mm整数） */
   .reg-len-col{flex:1;min-width:0;}
   .reg-len-wrap{display:flex;align-items:baseline;gap:6px;min-width:0;}
-  .reg-len-input{flex:1;min-width:0;font-size:22px;font-weight:700;color:var(--filled);
+  .reg-len-input{flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--filled);
     border:none;border-bottom:2.5px solid var(--blue);background:transparent;
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.06em;}
@@ -483,13 +484,15 @@
   .reg-len-input.warn{border-bottom-color:var(--warn);color:var(--warn);}
   .reg-len-unit{font-size:13px;font-weight:700;color:var(--text-light);flex-shrink:0;}
   /* ★ [v4.0.0] ③ 長さは対象部材では必須。未入力のあいだ出しっぱなしにする */
-  .reg-len-msg{display:none;font-size:11px;font-weight:700;color:var(--warn);margin-top:5px;}
+  .reg-len-msg{display:none;font-size:10px;font-weight:700;color:var(--warn);margin-top:3px;}
   .reg-len-msg.on{display:block;}
-  /* ★ [v4.0.0] ④ 特注品バナー */
+  /* ★ [v4.0.0] ④ 特注品バナー
+     ★ 2行になるとモーダルが伸びるので、1行固定＋はみ出しは省略記号にする。
+        文言は絵文字を除き全角25文字以内に収めること。 */
   .reg-custom-note{font-size:12px;font-weight:700;color:#5a1fd1;
     background:rgba(123,63,242,.10);border:1.5px solid var(--purple);
-    border-radius:var(--radius-xs);padding:6px 10px;margin-bottom:10px;
-    display:flex;align-items:center;gap:5px;}
+    border-radius:var(--radius-xs);padding:5px 9px;margin-bottom:8px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* ★ [v4.0.0] ③ 修正モーダルの長さ欄 */
   .em-len-wrap{display:flex;align-items:baseline;gap:6px;}
   .em-len-wrap .em-input{flex:1;min-width:0;}
@@ -500,18 +503,18 @@
   /* 未登録時の図番・品名手入力フィールド */
   .reg-unreg-note{font-size:12px;font-weight:700;color:var(--warn);
     background:var(--warn-lt);border:1.5px solid var(--warn);
-    border-radius:var(--radius-xs);padding:6px 10px;margin-bottom:10px;
-    display:flex;align-items:center;gap:5px;}
-  .reg-zuno-input{width:100%;font-size:22px;font-weight:700;color:var(--filled);
+    border-radius:var(--radius-xs);padding:5px 9px;margin-bottom:8px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .reg-zuno-input{width:100%;font-size:20px;font-weight:700;color:var(--filled);
     border:none;border-bottom:2.5px solid var(--blue);background:transparent;
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.08em;text-transform:uppercase;}
   .reg-zuno-input:focus{border-bottom-color:var(--primary);
     box-shadow:0 2px 0 0 rgba(46,107,224,.18);}
-  .reg-hinmei-input{width:100%;font-size:20px;font-weight:600;color:var(--text);
+  .reg-hinmei-input{width:100%;font-size:17px;font-weight:600;color:var(--text);
     border:none;border-bottom:2px solid var(--blue-lt);background:transparent;
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
-    resize:none;line-height:1.45;min-height:2.9em;}
+    resize:none;line-height:1.35;min-height:2.4em;}
   .reg-hinmei-input:focus{border-bottom-color:var(--blue);}
   /* 在庫区分セレクト（モーダル内）*/
   .reg-its-sel{width:100%;font-size:16px;font-weight:500;font-family:var(--font);
@@ -523,15 +526,15 @@
   .reg-its-sel.warn{border-bottom-color:var(--warn);}
   /* ⑤ 数量エリア：入力欄が見切れない構成 */
   .reg-qty-wrap{background:var(--surface2);border:2px solid var(--blue-lt);
-    border-radius:var(--radius-sm);padding:10px 14px;margin:10px 0 12px;}
+    border-radius:var(--radius-sm);padding:7px 12px;margin:8px 0 8px;}
   .reg-qty-inner{display:flex;align-items:center;gap:10px;}
   /* ③ 数量ラベルもUP */
   .reg-qty-label{font-size:14px;font-weight:700;color:var(--text-light);
     letter-spacing:.06em;flex-shrink:0;width:44px;}
   .reg-qty-input{
     flex:1;min-width:0;                /* ⑤ flex:1+min-width:0 で見切れ防止 */
-    font-family:monospace;font-size:42px;font-weight:900;
-    text-align:center;letter-spacing:2px;padding:6px 4px;
+    font-family:monospace;font-size:36px;font-weight:900;
+    text-align:center;letter-spacing:2px;padding:4px 4px;
     border:2px solid var(--blue-lt);border-radius:var(--radius-xs);
     background:var(--surface);color:var(--primary);outline:none;-webkit-appearance:none;
     -moz-appearance:textfield;touch-action:manipulation;width:0;}/* width:0でflex基準リセット */
@@ -541,11 +544,16 @@
     box-shadow:0 0 0 3px rgba(46,107,224,.18);background:var(--surface);}
   .reg-qty-unit{font-size:15px;color:var(--text-mid);font-weight:700;
     flex-shrink:0;width:24px;text-align:left;}
-  /* ボタン行：リセット（左）+ 登録（右） */
-  .reg-modal-btns{display:flex;gap:8px;padding:4px 16px 4px;}
+  /* ボタン行：リセット（左）+ 登録（右）
+     ★ [v4.0.0] スクロール領域の下端に貼り付ける。長さ欄が増えて内容が
+        伸びたときや、ソフトキーボードで下部が隠れたときでも、
+        「登録」までスクロールせずに押せるようにするため。 */
+  .reg-modal-btns{display:flex;gap:8px;padding:8px 14px;
+    position:sticky;bottom:0;background:var(--surface);
+    border-top:1px solid var(--blue-lt);}
   .reg-modal-btn{flex:1;font-family:var(--font);font-size:15px;font-weight:700;
     letter-spacing:.04em;border:none;border-radius:var(--radius);
-    padding:14px 10px;cursor:pointer;
+    padding:12px 10px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;gap:6px;
     color:#fff;-webkit-appearance:none;transition:transform .12s;touch-action:manipulation;}
   .reg-modal-btn:active{transform:scale(.95);}
@@ -841,11 +849,11 @@
       <div class="reg-op-row" id="regOpRow"></div>
       <!-- 未登録バナー（未登録時のみ表示） -->
       <div class="reg-unreg-note" id="regUnregNote" style="display:none">
-        ⚠ マスタ未登録 — 図番・品名を手入力してください
+        ⚠ マスタ未登録です。図番と品名を入力
       </div>
       <!-- ★ [v4.0.0] ④ 特注品バナー（マスタ未登録かつ図番がK/P始まり） -->
       <div class="reg-custom-note" id="regCustomNote" style="display:none">
-        🏷 特注品として「棚卸データ(特注品)」シートへ登録されます
+        🏷 棚卸データ(特注品)シートへ登録されます
       </div>
       <!-- フォーム行：図番（マスタヒット時は表示のみ、未登録時は入力可） -->
       <div class="reg-form-row">
@@ -878,7 +886,7 @@
               oninput="onRegLenInput()">
             <span class="reg-len-unit">mm</span>
           </div>
-          <div class="reg-len-msg" id="regLenMsg">⚠ この部材は長さが必須です（半角数字・mm）</div>
+          <div class="reg-len-msg" id="regLenMsg">⚠ 長さの入力は必須です（半角数字）</div>
         </div>
       </div>
       <!-- フォーム行：在庫区分（常時表示・必須） -->
@@ -966,7 +974,7 @@
             placeholder="例: 4000" autocomplete="off" oninput="onEmLenInput()">
           <span class="em-len-unit">mm</span>
         </div>
-        <div class="em-len-msg" id="emLenMsg">⚠ この部材は長さが必須です（半角数字・mm）</div>
+        <div class="em-len-msg" id="emLenMsg">⚠ 長さの入力は必須です（半角数字）</div>
       </div>
       <div class="em-divider"></div>
       <!-- 数量（常時編集可） -->
@@ -2756,7 +2764,7 @@ async function regData() {
     var lenInpEl = document.getElementById('regLenInput');
     if (!isValidLen(lenInpEl ? lenInpEl.value : '')) {
       syncRegLen();
-      toast('長さ(mm)を入力してください — この部材は長さが必須です', 'err');
+      toast('長さの入力は必須です（半角数字）', 'err');
       if (lenInpEl) { lenInpEl.focus(); lenInpEl.select(); }
       return;
     }
@@ -3177,7 +3185,7 @@ async function saveEditModal() {
     var emLenEl = document.getElementById('emLenInput');
     if (!isValidLen(emLenEl ? emLenEl.value : '')) {
       syncEmLen();
-      toast('長さ(mm)を入力してください — この部材は長さが必須です', 'err');
+      toast('長さの入力は必須です（半角数字）', 'err');
       if (emLenEl) { emLenEl.focus(); emLenEl.select(); }
       return;
     }
