@@ -403,6 +403,30 @@
   .m-ok{width:100%;padding:12px;font-size:15px;font-weight:700;
     background:linear-gradient(135deg,#00b09b,#5cb85c);border:none;
     border-radius:11px;color:#fff;cursor:pointer;font-family:var(--font);-webkit-appearance:none;}
+  /* ★ [v4.2.0] ⑥案G: 起動時の未送信検知モーダル
+     z-index は ghost-block(399) より上。起動直後に出るため、
+     hideLoad() が350msだけ出す透明ブロッカーに食われないようにする。 */
+  #pendMover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.62);
+    z-index:410;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+  #pendMover.on{display:flex;}
+  .pend-box{background:var(--surface);border-radius:20px;padding:22px 20px 18px;
+    max-width:330px;width:88%;text-align:center;
+    box-shadow:0 10px 36px rgba(0,0,0,.26);animation:fadeUp .25s ease;}
+  .pend-ico{font-size:40px;margin-bottom:6px;}
+  .pend-ttl{font-size:16px;font-weight:800;color:var(--warn);margin-bottom:10px;}
+  .pend-msg{font-size:19px;font-weight:800;color:var(--text);margin-bottom:6px;}
+  .pend-sub{font-size:12px;color:var(--text-light);line-height:1.6;margin-bottom:16px;}
+  .pend-btns{display:flex;gap:8px;}
+  .pend-btn{padding:13px 8px;font-size:15px;font-weight:700;
+    border:none;border-radius:12px;cursor:pointer;color:#fff;
+    font-family:var(--font);-webkit-appearance:none;touch-action:manipulation;
+    transition:transform .12s;}
+  .pend-btn:active{transform:scale(.96);}
+  .pend-btn.later{flex:1;background:var(--surface2);color:var(--text-mid);}
+  .pend-btn.send{flex:1.7;background:linear-gradient(135deg,#1877f0,#0d58c0);
+    box-shadow:0 4px 14px rgba(20,80,200,.35);}
+
   /* ===== 登録情報モーダル（v3.1.2）===== */
   #regmover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.60);
     z-index:300;align-items:flex-end;justify-content:center;
@@ -783,7 +807,8 @@
             　<b>同じ図番でも読み取るたびに別行として追加されます</b><br>
             　数量を直したいときは履歴タブで該当行をタップして修正<br>
             　マスタに品名が無くK/Pで始まる図番は「特注」表示になり、<br>
-            　スプレッドシートの「棚卸データ(特注品)」へ送られます<br><br>
+            　スプレッドシートの「棚卸データ(特注品)」へ送られます<br>
+            　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
@@ -805,11 +830,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.1.0<br>
+        <div class="s-info">DX棚卸アプリ v4.2.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v4.0.0: 同一図番の重複登録に対応／長さ(mm)入力（対象部材は必須）／特注品シート分離／QR読取範囲を枠内に限定</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.2.0: 未送信データを残したままアプリを閉じると、次回起動時に知らせます（送信し忘れ防止・案G）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
+          v4.0.0: 同一図番の重複登録に対応／長さ(mm)入力（対象部材は必須）／特注品シート分離／QR読取範囲を枠内に限定</span><br>
           <span style="color:#e07800;font-weight:700;">※ v4.0.0のGAS更新（ウェブアプリの新バージョン発行）が未実施なら必要です。v4.1.0はindex.htmlのみの変更です</span><br>
           <span style="color:#6b7a99;font-weight:500;">v3.8.0: 保存済みマスタを優先利用（24時間）<br>
           v3.7.0: パディング除去でデータ削減／マスタキャッシュをIndexedDB化<br>
@@ -831,6 +857,20 @@
     <div class="m-msg" id="mmsg">登録しました！</div>
     <div class="m-sub" id="msub"></div>
     <button type="button" class="m-ok" onclick="closeMod()">OK</button>
+  </div>
+</div>
+
+<!-- ★ [v4.2.0] ⑥案G: 未送信データの起動時検知モーダル -->
+<div id="pendMover">
+  <div class="pend-box">
+    <div class="pend-ico">&#9888;&#65039;</div>
+    <div class="pend-ttl">未送信データが残っています</div>
+    <div class="pend-msg" id="pendMsg"></div>
+    <div class="pend-sub" id="pendSub"></div>
+    <div class="pend-btns">
+      <button type="button" class="pend-btn later" onclick="closePendModal()">あとで</button>
+      <button type="button" class="pend-btn send" onclick="sendFromPendModal()">&#128228; 今すぐ送信</button>
+    </div>
   </div>
 </div>
 
@@ -1008,7 +1048,7 @@
 /* ============================================================
    GAS URL（設定UIには表示しない）
    ============================================================ */
-var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyZyjG_GcKabu51K-yDtN9W1wpJ9S1wyok66Lif8hcMuplTVD2jtnSyH8tyyLT8_qFZ/exec';
+var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxxwQ5k7J_PBfXJmTGPHgVNQADhfXekDb83m8JpUesrV2dZ8ixd9rG-KyLA5EKZfG6u/exec';
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
@@ -1051,6 +1091,11 @@ var curUnit    = '個';
 var curFromMst = false;
 var curScanSrc = '';
 var curIsCustom = false;   /* ★ [v4.0.0] ④ 特注品として登録するか */
+
+/* ★ [v4.2.0] ⑥案G: 未送信を残したまま離脱したことの記録先（localStorage）と
+   未送信件数の同期キャッシュ。詳細は markPendingOnLeave() のコメント参照。 */
+var LS_PEND_KEY = 'dx_inv_pending_state';
+var _pendCount  = 0;
 
 var mode       = 'jan';
 var camOn      = false;
@@ -1485,6 +1530,8 @@ async function init() {
   restoreOp();
   await rendHist();
   await updBadge();
+  /* ★ [v4.2.0] ⑥案G: 未送信を残したまま閉じていたら、ここで必ず知らせる */
+  await checkPendingOnStart();
 }
 
 function updClock() {
@@ -2982,6 +3029,99 @@ async function updBadge() {
   var el    = document.getElementById('pb');
   el.textContent = '未送信:' + pend + '件';
   el.classList.toggle('on', pend > 0);
+  /* ★ [v4.2.0] ⑥案G: 離脱時に同期的に読める場所へ件数を控えておく。
+     visibilitychange のハンドラでは非同期のIndexedDB読取が間に合わないため、
+     ここでキャッシュしておく。全部送り終えたら離脱記録も消す。 */
+  _pendCount = pend;
+  if (pend === 0) clearPendingMark();
+}
+
+/* ============================================================
+   ★ [v4.2.0] ⑥案G: 未送信データを残したままアプリを閉じたことの検知
+
+   【なぜこの形なのか】
+   スワイプでアプリを終了する操作は、OSがプロセスを即座に落とすため
+   JavaScriptが一切動かない。つまり「終了そのもの」は検知できない。
+   ただし終了する前には必ずバックグラウンドへ移す操作があり、そこでは
+   visibilitychange が hidden で発火する。そこで未送信件数を控えておき、
+   次回起動時に本人へ提示する（＝その場では止められないが、確実に目に入る）。
+   バックグラウンド移行時に警告を出す案は、その時点で画面が見えていないため
+   意味がない。詳細は HANDOFF §6-2 を参照。
+
+   【なぜ localStorage なのか】
+   hidden の時点でページはいつ破棄されてもおかしくない。IndexedDBは非同期で
+   トランザクションが完了しない可能性があるため、ここでは同期的に書ける
+   localStorage を使う。保存するのは日時と件数だけで数十バイトなので、
+   v3.7.0でマスタキャッシュをIndexedDBへ追い出した容量問題とは無関係。
+============================================================ */
+function markPendingOnLeave() {
+  try {
+    if (_pendCount > 0) {
+      localStorage.setItem(LS_PEND_KEY,
+        JSON.stringify({ at: Date.now(), count: _pendCount }));
+    } else {
+      localStorage.removeItem(LS_PEND_KEY);
+    }
+  } catch(e) {}
+}
+
+function clearPendingMark() {
+  try { localStorage.removeItem(LS_PEND_KEY); } catch(e) {}
+}
+
+function readPendingMark() {
+  try {
+    var raw = localStorage.getItem(LS_PEND_KEY);
+    if (!raw) return null;
+    var o = JSON.parse(raw);
+    return (o && o.at) ? o : null;
+  } catch(e) { return null; }
+}
+
+/* バックグラウンド移行とページ破棄の両方を拾う。
+   iOS Safari は beforeunload が当てにならないので visibilitychange が主。 */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') markPendingOnLeave();
+});
+window.addEventListener('pagehide', markPendingOnLeave);
+
+/* ★ [v4.2.0] 起動時チェック。
+   判定はIndexedDBの実データで行い、localStorageの記録は「前回いつ閉じたか」を
+   添えるためだけに使う。こうしておくと、クラッシュや強制終了で記録が残らなかった
+   場合でも未送信を取りこぼさない。 */
+async function checkPendingOnStart() {
+  var items = await dbA('inv');
+  var pend  = items.filter(function(i) { return i.sent_flag === 0; });
+  if (!pend.length) { clearPendingMark(); return; }
+
+  var mark  = readPendingMark();
+  var msgEl = document.getElementById('pendMsg');
+  var subEl = document.getElementById('pendSub');
+  if (msgEl) msgEl.textContent = '未送信 ' + pend.length + '件';
+  if (subEl) {
+    if (mark) {
+      var d  = new Date(mark.at);
+      var p2 = function(n) { return String(n).padStart(2, '0'); };
+      subEl.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' '
+        + p2(d.getHours()) + ':' + p2(d.getMinutes())
+        + ' にアプリを閉じたときから残っています。\n送信するまでスプレッドシートには反映されません。';
+    } else {
+      subEl.textContent = '送信するまでスプレッドシートには反映されません。';
+    }
+    subEl.style.whiteSpace = 'pre-line';
+  }
+  document.getElementById('pendMover').classList.add('on');
+}
+
+function closePendModal() {
+  document.getElementById('pendMover').classList.remove('on');
+}
+
+/* 「今すぐ送信」: 履歴タブへ移してから送る（結果と残件がその場で見えるように） */
+async function sendFromPendModal() {
+  closePendModal();
+  sw('hist');
+  await sendData();
 }
 
 /* ============================================================
