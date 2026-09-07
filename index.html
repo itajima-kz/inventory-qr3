@@ -7,6 +7,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="棚卸アプリ">
   <meta name="theme-color" content="#1a3fa0">
+  <!-- ★ [v4.3.0] PWA（ホーム画面に追加）対応。
+       apple-touch-icon が無いと、ホーム画面アイコンがページのスクリーンショットになる。
+       manifest.json は ⑥案H の navigator.setAppBadge() に必要。
+       パスは相対にしてある（GitHub Pagesのサブディレクトリ配信でも壊れないように）。 -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="manifest" href="./manifest.json">
   <title>DX棚卸アプリ</title>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -770,6 +777,14 @@
             &#128269; キャッシュ状態を確認
           </button>
         </div>
+        <!-- ★ [v4.3.0] ⑥案H: ホーム画面アイコンのバッジ -->
+        <div class="s-row">
+          <div class="s-lbl">ホーム画面アイコンのバッジ</div>
+          <div class="s-info" id="badgeStatus" style="margin-bottom:8px;">確認中…</div>
+          <button type="button" class="ref-btn" style="width:100%;background:linear-gradient(135deg,var(--purple),#5a1fd1);" onclick="enableAppBadge()">
+            &#128276; 未送信件数をアイコンに表示する
+          </button>
+        </div>
       </div>
     </div>
     <div class="ss">
@@ -808,7 +823,9 @@
             　数量を直したいときは履歴タブで該当行をタップして修正<br>
             　マスタに品名が無くK/Pで始まる図番は「特注」表示になり、<br>
             　スプレッドシートの「棚卸データ(特注品)」へ送られます<br>
-            　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br><br>
+            　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br>
+            　<b>ホーム画面に追加すると、アイコンに未送信件数を出せます</b><br>
+            　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
@@ -830,11 +847,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.2.0<br>
+        <div class="s-info">DX棚卸アプリ v4.3.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.2.0: 未送信データを残したままアプリを閉じると、次回起動時に知らせます（送信し忘れ防止・案G）</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示できます（送信し忘れ防止・案H）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
+          v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
           v4.0.0: 同一図番の重複登録に対応／長さ(mm)入力（対象部材は必須）／特注品シート分離／QR読取範囲を枠内に限定</span><br>
           <span style="color:#e07800;font-weight:700;">※ v4.0.0のGAS更新（ウェブアプリの新バージョン発行）が未実施なら必要です。v4.1.0はindex.htmlのみの変更です</span><br>
           <span style="color:#6b7a99;font-weight:500;">v3.8.0: 保存済みマスタを優先利用（24時間）<br>
@@ -1526,6 +1544,10 @@ async function init() {
   setInterval(updClock, 1000); updClock();
   setMode('jan');
   initJanReader();
+  /* ★ [v4.3.0] ⑥案H: バッジの状態表示は同期処理で依存も無いので、
+     マスタ読込（数秒〜十数秒かかる）を待たずに先に出しておく。
+     ここが後ろだと、設定タブが長いあいだ「確認中…」のままになる。 */
+  updBadgeStatus();
   await loadAllMaster();
   restoreOp();
   await rendHist();
@@ -3034,6 +3056,8 @@ async function updBadge() {
      ここでキャッシュしておく。全部送り終えたら離脱記録も消す。 */
   _pendCount = pend;
   if (pend === 0) clearPendingMark();
+  /* ★ [v4.3.0] ⑥案H: ホーム画面アイコンのバッジにも反映（通信不要） */
+  updAppBadge(pend);
 }
 
 /* ============================================================
@@ -3122,6 +3146,94 @@ async function sendFromPendModal() {
   closePendModal();
   sw('hist');
   await sendData();
+}
+
+/* ============================================================
+   ★ [v4.3.0] ⑥案H: 未送信件数をホーム画面アイコンのバッジに表示
+
+   【なぜ有効か】
+   表示するだけで**通信を一切使わない**。WiFiの届かない区画でも、
+   アプリを閉じた後でも機能する唯一のシグナルになる。
+
+   【前提】
+   ホーム画面に追加(PWA)して、そのアイコンから起動していること ＋ 通知の許可。
+   Safariのタブとして開いている間は機能しない。iOSでは通知許可の要求を
+   ユーザー操作から呼ぶ必要があるため、設定タブのボタン経由にしてある。
+
+   【方針】
+   未対応・未許可でも**黙って何もしない**。現場作業中に許可を求めたり
+   エラーを出したりして邪魔しないため、能動的な設定は設定タブに寄せている。
+============================================================ */
+function isStandalone() {
+  try {
+    return (window.navigator.standalone === true) ||
+           (!!window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  } catch(e) { return false; }
+}
+
+function badgeSupported() {
+  try { return ('setAppBadge' in navigator); } catch(e) { return false; }
+}
+
+/* 未送信件数をバッジへ反映。updBadge() から毎回呼ばれる。 */
+function updAppBadge(count) {
+  if (!badgeSupported()) return;
+  try {
+    if (count > 0) {
+      navigator.setAppBadge(count).catch(function(){});
+    } else {
+      navigator.clearAppBadge().catch(function(){});
+    }
+  } catch(e) {}
+}
+
+/* 設定タブの状態表示。なぜ効かないのかが分かるように3条件を個別に出す。 */
+function updBadgeStatus(extra) {
+  var el = document.getElementById('badgeStatus');
+  if (!el) return;
+  var perm = 'unsupported';
+  try { if (typeof Notification !== 'undefined') perm = Notification.permission; } catch(e) {}
+  var ok = function(b, y, n) { return (b ? '<span style="color:var(--green);font-weight:700;">' + y + '</span>'
+                                          : '<span style="color:var(--warn);font-weight:700;">' + n + '</span>'); };
+  var lines = [
+    'ホーム画面から起動: ' + ok(isStandalone(), '✔ はい', '✘ いいえ（Safariのタブで開いています）'),
+    'バッジ機能: '        + ok(badgeSupported(), '✔ 利用可', '✘ 非対応'),
+    '通知の許可: '        + (perm === 'granted'
+        ? '<span style="color:var(--green);font-weight:700;">✔ 許可済み</span>'
+        : (perm === 'denied'
+            ? '<span style="color:var(--warn);font-weight:700;">✘ 拒否（iOSの設定アプリから変更してください）</span>'
+            : '<span style="color:var(--text-light);">― 未設定</span>'))
+  ];
+  if (extra) lines.push(extra);
+  el.innerHTML = lines.join('<br>');
+}
+
+/* 設定タブのボタン。iOSは通知許可の要求をユーザー操作から呼ぶ必要がある。 */
+async function enableAppBadge() {
+  if (!isStandalone()) {
+    toast('先に「ホーム画面に追加」し、そのアイコンから開いてください', 'info');
+  }
+  if (!badgeSupported()) {
+    updBadgeStatus('→ この環境ではバッジを表示できません');
+    toast('この端末はアイコンバッジ非対応です', 'err');
+    return;
+  }
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      var p = await Notification.requestPermission();
+      if (p !== 'granted') {
+        updBadgeStatus('→ 通知が許可されなかったためバッジは表示されません');
+        toast('通知が許可されませんでした', 'err');
+        return;
+      }
+    }
+    await updBadge();   /* 現在の未送信件数をすぐ反映する */
+    updBadgeStatus('→ <b>有効です。</b>未送信 ' + _pendCount + '件 を表示中');
+    toast('アイコンバッジを有効にしました', 'ok');
+  } catch(e) {
+    updBadgeStatus('→ 設定に失敗: ' + h(e.message));
+    toast('バッジ設定に失敗: ' + e.message, 'err');
+  }
 }
 
 /* ============================================================
