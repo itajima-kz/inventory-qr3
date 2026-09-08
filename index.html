@@ -832,7 +832,7 @@
             　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br>
             　<b>ホーム画面に追加すると、アイコンに未送信件数を出せます</b><br>
             　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br>
-            　<b>通信できる状態なら自動でも送信されます</b>（10件ごと・5分ごと・<br>
+            　<b>通信できる状態なら自動でも送信されます</b>（10件ごと・10分ごと・<br>
             　オンライン復帰時・アプリに戻ったとき）。設定タブでOFFにもできます<br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
@@ -855,10 +855,10 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.4.0<br>
+        <div class="s-info">DX棚卸アプリ v4.4.1<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.4.0: 自動送信に対応（10件ごと／5分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
           <span style="color:#6b7a99;font-weight:500;">v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示（案H）<br>
           v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
           v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
@@ -1127,7 +1127,7 @@ var _pendCount  = 0;
 /* ★ [v4.4.0] ⑥案A: 自動送信の設定。詳細は autoSend() のコメント参照。 */
 var LS_AUTOSEND_KEY     = 'dx_inv_autosend';
 var AUTO_SEND_THRESHOLD = 10;             /* この件数たまったら送る */
-var AUTO_SEND_INTERVAL  = 5 * 60 * 1000;  /* 定期送信の間隔（5分） */
+var AUTO_SEND_INTERVAL  = 10 * 60 * 1000; /* 定期送信の間隔（10分） */
 var AUTO_SEND_MIN_GAP   = 30 * 1000;      /* 直前の試行からこの間隔は空ける（連打防止） */
 var _autoSendOn   = true;                 /* 設定タブでON/OFFできる */
 var _sending      = false;                /* 送信中フラグ（手動・自動 共通の排他） */
