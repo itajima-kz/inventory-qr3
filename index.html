@@ -777,6 +777,12 @@
             &#128269; キャッシュ状態を確認
           </button>
         </div>
+        <!-- ★ [v4.4.0] ⑥案A: 自動送信 -->
+        <div class="s-row">
+          <div class="s-lbl">自動送信</div>
+          <div class="s-info" id="autoSendStatus" style="margin-bottom:8px;">—</div>
+          <button type="button" class="ref-btn" id="autoSendBtn" style="width:100%" onclick="toggleAutoSend()">自動送信</button>
+        </div>
         <!-- ★ [v4.3.0] ⑥案H: ホーム画面アイコンのバッジ -->
         <div class="s-row">
           <div class="s-lbl">ホーム画面アイコンのバッジ</div>
@@ -825,7 +831,9 @@
             　スプレッドシートの「棚卸データ(特注品)」へ送られます<br>
             　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br>
             　<b>ホーム画面に追加すると、アイコンに未送信件数を出せます</b><br>
-            　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br><br>
+            　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br>
+            　<b>通信できる状態なら自動でも送信されます</b>（10件ごと・5分ごと・<br>
+            　オンライン復帰時・アプリに戻ったとき）。設定タブでOFFにもできます<br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
@@ -847,11 +855,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.3.0<br>
+        <div class="s-info">DX棚卸アプリ v4.4.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示できます（送信し忘れ防止・案H）</span><br>
-          <span style="color:#6b7a99;font-weight:500;">v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.4.0: 自動送信に対応（10件ごと／5分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示（案H）<br>
+          v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
           v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
           v4.0.0: 同一図番の重複登録に対応／長さ(mm)入力（対象部材は必須）／特注品シート分離／QR読取範囲を枠内に限定</span><br>
           <span style="color:#e07800;font-weight:700;">※ v4.0.0のGAS更新（ウェブアプリの新バージョン発行）が未実施なら必要です。v4.1.0はindex.htmlのみの変更です</span><br>
@@ -1114,6 +1123,17 @@ var curIsCustom = false;   /* ★ [v4.0.0] ④ 特注品として登録するか
    未送信件数の同期キャッシュ。詳細は markPendingOnLeave() のコメント参照。 */
 var LS_PEND_KEY = 'dx_inv_pending_state';
 var _pendCount  = 0;
+
+/* ★ [v4.4.0] ⑥案A: 自動送信の設定。詳細は autoSend() のコメント参照。 */
+var LS_AUTOSEND_KEY     = 'dx_inv_autosend';
+var AUTO_SEND_THRESHOLD = 10;             /* この件数たまったら送る */
+var AUTO_SEND_INTERVAL  = 5 * 60 * 1000;  /* 定期送信の間隔（5分） */
+var AUTO_SEND_MIN_GAP   = 30 * 1000;      /* 直前の試行からこの間隔は空ける（連打防止） */
+var _autoSendOn   = true;                 /* 設定タブでON/OFFできる */
+var _sending      = false;                /* 送信中フラグ（手動・自動 共通の排他） */
+var _lastAttemptAt = 0;                   /* 最後に「試行」した時刻（成功・失敗を問わない） */
+var _lastSendMsg  = '';                   /* 設定タブに出す最後の結果 */
+var _autoTimer    = null;
 
 var mode       = 'jan';
 var camOn      = false;
@@ -1402,7 +1422,7 @@ function dbC(s) {
 
 /* ★ [v3.2.0] GASリトライ（最大3回・エクスポネンシャルバックオフ）
    ネットワーク一時切断やGAS一時エラー時に自動リトライ */
-function gasWithRetry(fn, maxRetry) {
+function gasWithRetry(fn, maxRetry, silent) {
   maxRetry = maxRetry || 3;
   return new Promise(function(resolve, reject) {
     var attempt = 0;
@@ -1415,7 +1435,9 @@ function gasWithRetry(fn, maxRetry) {
                           err.message.indexOf('タイムアウト') >= 0;
         if (isRetryable && attempt < maxRetry) {
           var delay = 1000 * Math.pow(2, attempt - 1); /* 1s, 2s, 4s */
-          toast('通信リトライ中… (' + attempt + '/' + maxRetry + ')', 'info');
+          /* ★ [v4.4.0] 自動送信(silent)ではリトライ通知を出さない。
+             作業者が何もしていないのに通信メッセージが出ると混乱するため。 */
+          if (!silent) toast('通信リトライ中… (' + attempt + '/' + maxRetry + ')', 'info');
           setTimeout(tryOnce, delay);
         } else {
           reject(err);
@@ -1548,12 +1570,19 @@ async function init() {
      マスタ読込（数秒〜十数秒かかる）を待たずに先に出しておく。
      ここが後ろだと、設定タブが長いあいだ「確認中…」のままになる。 */
   updBadgeStatus();
+  /* ★ [v4.4.0] ⑥案A: 保存済みのON/OFF設定を読み、ONならタイマーを回す */
+  _autoSendOn = loadAutoSendPref();
+  if (_autoSendOn) startAutoSendTimer();
+  updAutoSendUI();
   await loadAllMaster();
   restoreOp();
   await rendHist();
   await updBadge();
   /* ★ [v4.2.0] ⑥案G: 未送信を残したまま閉じていたら、ここで必ず知らせる */
   await checkPendingOnStart();
+  /* ★ [v4.4.0] ⑥案A: 起動直後にも一度だけ送信を試みる（前回の残りを片付ける）。
+     案Gのモーダルが開いていれば isAnyModalOpen() で自動的に見送られる。 */
+  autoSend('起動時');
 }
 
 function updClock() {
@@ -2949,6 +2978,8 @@ async function regData() {
       + '  ' + rec.quantity + (rec.unit || '個')
       + (rec.is_custom ? '（特注品）' : ''), 'ok');
   resetScan();
+  /* ★ [v4.4.0] ⑥案A① 件数トリガー。await しない（登録操作を待たせないため） */
+  maybeAutoSendByCount();
 }
 
 /* ============================================================
@@ -3058,6 +3089,8 @@ async function updBadge() {
   if (pend === 0) clearPendingMark();
   /* ★ [v4.3.0] ⑥案H: ホーム画面アイコンのバッジにも反映（通信不要） */
   updAppBadge(pend);
+  /* ★ [v4.4.0] ⑥案A: 設定タブの未送信件数表示も追随させる */
+  updAutoSendUI();
 }
 
 /* ============================================================
@@ -3600,17 +3633,52 @@ function toSendPayload(i) {
   };
 }
 
+/* 手動送信（履歴タブの送信ボタン・案Gのモーダル）。従来どおり画面を止めて送る。 */
 async function sendData() {
+  await sendPending({ auto: false });
+}
+
+/* ============================================================
+   ★ [v4.4.0] 送信の実処理（手動・自動の共通ルート）
+
+   opts.auto = true のとき:
+   - 画面を止めない（showLoad を出さない）
+   - リトライ通知を出さない
+   - 失敗しても黙って諦める（次のトリガーで再試行。未送信バッジが残るのが合図）
+
+   【なぜ手動と共通化したか】
+   送信処理が2つあると、片方だけ直してもう片方が古いままになる。
+   特に sent_flag の付け方がずれると重複行やデータ消失に直結するため、
+   1本にまとめて opts で振る舞いだけ変えている。
+============================================================ */
+async function sendPending(opts) {
+  opts = opts || {};
+  var auto = !!opts.auto;
+
+  /* ★ 排他制御。自動と手動が重なると同じレコードを2回送ることになる。 */
+  if (_sending) {
+    if (!auto) toast('送信処理中です', 'info');
+    return { skipped: 'busy' };
+  }
+
   var all  = await dbA('inv');
   var pend = all.filter(function(i) { return i.sent_flag === 0; });
-  if (!pend.length) { toast('未送信データはありません'); return; }
-  showLoad('送信中… ' + pend.length + '件');
+  if (!pend.length) {
+    if (!auto) toast('未送信データはありません');
+    return { skipped: 'empty' };
+  }
+
+  _sending       = true;
+  _lastAttemptAt = Date.now();
+  if (!auto) showLoad('送信中… ' + pend.length + '件');
+
   var payload = {
     action: 'register_batch',
     items: pend.map(toSendPayload)
   };
+
   try {
-    var res = await gasWithRetry(function(){ return gasPost(payload); });
+    var res = await gasWithRetry(function(){ return gasPost(payload); }, 3, auto);
     var results = res.results || [];
 
     /* ★ 各itemの結果でsent_flagを判定 */
@@ -3632,17 +3700,145 @@ async function sendData() {
       }
     }
 
-    hideLoad();
+    if (!auto) hideLoad();
+    _lastSendMsg = fmtHm(new Date()) + ' ' + (auto ? '自動' : '手動')
+                 + ' 成功' + successCount + '件'
+                 + (errorCount ? ' / エラー' + errorCount + '件' : '');
+
     if (errorCount === 0) {
-      toast(successCount + '件を送信しました', 'ok');
+      toast((auto ? '自動送信: ' : '') + successCount + '件を送信しました', 'ok');
     } else {
       toast('成功:' + successCount + '件 / エラー:' + errorCount + '件 — エラー分は未送信のまま', 'err');
     }
     await rendHist();
     await updBadge();
+    updAutoSendUI();
+    return { success: successCount, error: errorCount };
+
   } catch(e) {
-    hideLoad();
-    toast('送信エラー: ' + e.message, 'err');
+    if (!auto) hideLoad();
+    _lastSendMsg = fmtHm(new Date()) + ' ' + (auto ? '自動' : '手動') + ' 失敗: ' + e.message;
+    /* ★ 自動送信の失敗は黙って諦める。次のトリガーで再試行され、
+       それまでは未送信バッジ（＋案G/案H）が残るので気づける。
+       ここで毎回エラーを出すと、電波の弱い区画で通知だらけになる。 */
+    if (!auto) toast('送信エラー: ' + e.message, 'err');
+    updAutoSendUI();
+    return { error: e.message };
+
+  } finally {
+    _sending = false;
+  }
+}
+
+/* ============================================================
+   ★ [v4.4.0] ⑥案A: 自動送信
+
+   【トリガー】
+   ① 登録件数が AUTO_SEND_THRESHOLD 件たまったとき
+   ② AUTO_SEND_INTERVAL ごとの定期タイマー
+   ③ online イベント（オフラインからの復帰）
+   ④ 画面が可視に戻ったとき
+      ← iOSはバックグラウンドでタイマーを止めるため、②だけでは
+        「アプリを閉じて移動し、また開いた」場面を拾えない。④が必須。
+
+   【navigator.onLine を信用しない】
+   電波を掴んでさえいれば疎通できなくても true を返す。工場内の弱電界では
+   「オンライン判定なのに送信失敗」が普通に起きる。そのため
+   - onLine が false のときだけ確実に無駄と判断してスキップ
+   - true でも失敗する前提で、②の定期タイマーを常に回し続ける
+   という組み立てにしている。
+
+   【割り込まない】
+   モーダルを開いている最中（登録・修正・未送信通知）は送らない。
+   入力中に履歴が再描画されたりトーストが出たりするのを避けるため。
+============================================================ */
+function isAnyModalOpen() {
+  var ids = ['regmover', 'editMover', 'pendMover', 'mover'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (el && el.classList.contains('on')) return true;
+  }
+  return false;
+}
+
+async function autoSend(reason) {
+  if (!_autoSendOn)   return;
+  if (_sending)       return;
+  if (_pendCount <= 0) return;
+  if (!isOnline())    return;   /* falseなら確実に無駄。trueでも当てにはしない */
+  if (isAnyModalOpen()) return;
+  if (Date.now() - _lastAttemptAt < AUTO_SEND_MIN_GAP) return;
+  await sendPending({ auto: true, reason: reason || '' });
+}
+
+/* ① 件数トリガー（regData から呼ばれる） */
+function maybeAutoSendByCount() {
+  if (_pendCount >= AUTO_SEND_THRESHOLD) autoSend('件数' + _pendCount);
+}
+
+/* ② 定期タイマー */
+function startAutoSendTimer() {
+  stopAutoSendTimer();
+  _autoTimer = setInterval(function() { autoSend('定期'); }, AUTO_SEND_INTERVAL);
+}
+function stopAutoSendTimer() {
+  if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
+}
+
+/* ③④ オンライン復帰・画面復帰 */
+window.addEventListener('online', function() { autoSend('オンライン復帰'); });
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') autoSend('画面復帰');
+});
+
+/* ============================================================
+   ★ [v4.4.0] 自動送信のON/OFF（設定タブ）
+============================================================ */
+function loadAutoSendPref() {
+  try {
+    var v = localStorage.getItem(LS_AUTOSEND_KEY);
+    return (v === null) ? true : (v === '1');   /* 既定はON */
+  } catch(e) { return true; }
+}
+
+function setAutoSendPref(on) {
+  _autoSendOn = !!on;
+  try { localStorage.setItem(LS_AUTOSEND_KEY, _autoSendOn ? '1' : '0'); } catch(e) {}
+  if (_autoSendOn) startAutoSendTimer(); else stopAutoSendTimer();
+  updAutoSendUI();
+}
+
+function toggleAutoSend() {
+  setAutoSendPref(!_autoSendOn);
+  toast(_autoSendOn ? '自動送信をONにしました' : '自動送信をOFFにしました', 'ok');
+  if (_autoSendOn) autoSend('設定ON');
+}
+
+function fmtHm(d) {
+  var p = function(n) { return String(n).padStart(2, '0'); };
+  return p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function updAutoSendUI() {
+  var btn = document.getElementById('autoSendBtn');
+  var st  = document.getElementById('autoSendStatus');
+  if (btn) {
+    btn.textContent = _autoSendOn ? '⏹ 自動送信をOFFにする' : '▶ 自動送信をONにする';
+    btn.style.background = _autoSendOn
+      ? 'linear-gradient(135deg,#e07800,#b35f00)'
+      : 'linear-gradient(135deg,#0f9e6e,#076e49)';
+  }
+  if (st) {
+    var lines = [
+      '状態: ' + (_autoSendOn
+        ? '<span style="color:var(--green);font-weight:700;">✔ ON</span>'
+        : '<span style="color:var(--warn);font-weight:700;">✘ OFF</span>'),
+      '送信する条件: ' + AUTO_SEND_THRESHOLD + '件たまったとき / '
+        + Math.round(AUTO_SEND_INTERVAL / 60000) + '分ごと / オンライン復帰時 / 画面復帰時',
+      '未送信: ' + _pendCount + '件' + (isOnline() ? '' : '（<span style="color:var(--warn);font-weight:700;">オフライン</span>）')
+    ];
+    if (_lastSendMsg) lines.push('最後の送信: ' + h(_lastSendMsg));
+    st.innerHTML = lines.join('<br>');
   }
 }
 
