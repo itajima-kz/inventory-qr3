@@ -81,6 +81,12 @@
       padding:28px 16px 48px;
     }
     .app-wrap{
+      /* ★ [v4.6.0] ⑩ width:100% が無いと横幅いっぱいに広がらない。
+         body が display:flex(flex-direction:column) なので、flexアイテムに
+         margin:0 auto を付けると **auto余白がcross軸のstretchを打ち消し**、
+         要素が「内容幅」に縮む。iPadの834px画面に374pxの細い列が中央表示され
+         ていたのはこれが原因（PCでも同様に縮んでいた）。 */
+      width:100%;
       max-width:1040px;
       margin:0 auto;
       height:auto;
@@ -626,6 +632,55 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .ld-lbl{font-size:14px;color:var(--text-mid);font-weight:700;white-space:pre-line;text-align:center;line-height:1.8;}
   ::-webkit-scrollbar{display:none;}
+  /* ===== ★ [v4.6.0] ⑩ タブレット（iPad）レイアウト（768px以上） =====
+     **iPhone（〜559px）には一切影響しない**。min-width 指定のみを足している。
+     560px以上のPCレイアウトを土台に、タッチ操作向けに文字とボタンを拡大する。
+     条件を「幅700px以上 かつ 高さ600px以上」にしてある理由:
+       - 幅768pxだと **iPad mini縦(744px)が漏れる**ため700pxまで下げた。
+       - 幅だけだと **iPhoneの横向き(例 932x430)がタブレット扱い**になり、
+         高さ430pxしかない画面で文字とボタンが大きくなって破綻する。
+         高さ600px以上の条件で除外している。
+     iPadは 縦744〜1024px / 横1133〜1366px、高さは常に744px以上なので全て該当する。
+
+     ★ このブロックは **必ず <style> の末尾に置くこと**。
+       メディアクエリは詳細度を上げないため、.fi / .mbtn / .scanbtn などの
+       ベース定義より前に書くと**後勝ちで打ち消される**。
+       最初に @keyframes fadeUp の手前へ置いて、実際に効かず気付いた。 */
+  @media (min-width:700px) and (min-height:600px){
+    .hdr-title{font-size:30px;}
+    #pb{font-size:13px;padding:5px 12px;}
+    #hd{font-size:13px;}
+    .ntab{font-size:14px;padding:10px 6px 11px;}
+    .nicon{font-size:22px;}
+    .card{padding:14px 16px 13px;margin:10px 10px 0;}
+    .clabel{font-size:19px;}
+    .fl{font-size:18px;}
+    .fi{font-size:19px;padding:12px 34px 12px 14px;}
+    .mbtn{font-size:17px;padding:12px 8px;}
+    .scanbtn{font-size:19px;padding:16px;}
+    /* カメラは幅いっぱいに広げると 4:3 の映像が横長に潰れ、object-fit:cover で
+       上下が大きく切り捨てられる。720pxで頭打ちにして中央寄せする。
+       高さの上限は _setCamH() 側でタブレット用の比率に切り替えている。 */
+    .cam-area,.cam-ph{max-width:720px;margin-left:auto;margin-right:auto;}
+    .cam-ph{padding:40px 16px;}
+    .cam-ph-ico{font-size:56px;}
+    .cam-ph-txt{font-size:15px;}
+    /* 履歴・マスタの一覧も合わせて拡大 */
+    .hi-code{font-size:17px;}
+    .hi-name{font-size:14px;}
+    .hi-meta{font-size:12px;}
+    .hi-qty{font-size:24px;}
+    .mi-code{font-size:16px;}
+    .mi-name{font-size:14px;}
+    .srch-i{font-size:17px;}
+    /* モーダルはボトムシートだと画面下端に貼り付いて指が届きにくい。
+       タブレットでは中央のダイアログにする。
+       ボタン行の position:sticky（v4.0.0）は中央寄せでもそのまま効く。 */
+    #regmover{align-items:center;}
+    .reg-modal-box{max-width:620px;border-radius:20px;max-height:86dvh;padding-bottom:14px;}
+    #editMover{align-items:center;}
+    #editModalBox{max-width:620px;border-radius:20px;max-height:86dvh;padding-bottom:16px;}
+  }
   </style>
 </head>
 <body>
@@ -866,10 +921,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.5.0<br>
+        <div class="s-info">DX棚卸アプリ v4.6.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.5.0: マスタ未登録時の品名入力を任意に（特注品対応）。品名は全角推奨で半角は警告表示</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.6.0: iPad表示を最適化（横幅いっぱいに表示・文字とボタンを拡大・モーダルを中央表示）。iPhoneの表示は変更なし</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.5.0: マスタ未登録時の品名入力を任意に（特注品対応）。品名は全角推奨で半角は警告表示<br>
           <span style="color:#6b7a99;font-weight:500;">v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
           <span style="color:#6b7a99;font-weight:500;">v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示（案H）<br>
           v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
@@ -2012,8 +2068,15 @@ async function startCam() {
         var vh = v.videoHeight || 0;
         /* ★ [v3.3.1] 上限を innerHeight×0.38 に抑える
            ズーム/ライトオーバーレイ（~72px）＋カード余白分を確保するため
-           0.55→0.38 に縮小。OCRは変更なし（オーバーレイが映像内に重なるため問題なし） */
-        var maxH = Math.round(window.innerHeight * 0.38);
+           0.55→0.38 に縮小。OCRは変更なし（オーバーレイが映像内に重なるため問題なし）
+           ★ [v4.6.0] ⑩ タブレットは画面が広く縦にも余裕があるので比率を戻す。
+             判定条件はCSSの @media (min-width:700px) and (min-height:600px) と一致させること。
+             0.38のままだと 720px幅×0.38高 で横長に潰れ、object-fit:cover により
+             映像の上下が大きく切り捨てられてスキャン精度が落ちる。
+             ここはCSSでは直せない（高さをJSがpxで決めているため）。 */
+        var isTablet = (window.innerWidth >= 700 && window.innerHeight >= 600);
+        var maxRatio = isTablet ? 0.55 : 0.38;
+        var maxH = Math.round(window.innerHeight * maxRatio);
         if (vw && vh) {
           dh = Math.min(Math.round(dw * vh / vw), maxH);
         } else {
@@ -2690,7 +2753,8 @@ function openRegModal(isHit) {
   /* ★ [v4.0.0] ③④ 長さ欄の表示可否と特注品バナーを更新 */
   updRegLenRow(true);
   updRegCustomNote();
-  /* ★ [v4.5.0] ⑨ 品名の全角チェック（本体フォームで直接打たれた場合もここで拾う） */
+  /* ★ [v4.5.0] ⑨ 品名の全角チェックをモーダルを開いた時点の値で行う。
+     （本体フォームは display:none の隠しフォームなので直接入力はされない） */
   syncRegHinmei();
 
   /* --- 在庫区分セレクトをモーダル用に同期 --- */
