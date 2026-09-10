@@ -412,6 +412,11 @@
     padding:2px;outline:none;-webkit-appearance:none;}
   .as-num:focus{border-bottom-color:var(--primary);}
   .as-num:disabled{color:var(--text-light);border-bottom-color:var(--blue-lt);}
+  /* ★ [v4.9.1] 全体OFFのときは個別設定を丸ごと無効化する。
+     disabled 属性で操作を止めたうえで、見た目でも触れないことを示す。 */
+  .as-cfg.off{opacity:.45;}
+  .as-cfg.off .as-item{color:var(--text-light);}
+  .as-item input[type="checkbox"]:disabled{cursor:not-allowed;}
   .d-btn{width:100%;padding:12px;background:#fff5f5;color:#c03030;
     border:1.5px solid #f5c0c0;border-radius:10px;font-size:13px;font-weight:700;
     font-family:var(--font);cursor:pointer;-webkit-appearance:none;}
@@ -938,9 +943,9 @@
             　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br>
             　<b>ホーム画面に追加すると、アイコンに未送信件数を出せます</b><br>
             　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br>
-            　<b>通信できる状態なら自動でも送信されます</b><br>
-            　送信のきっかけ（件数・分ごと・オンライン復帰・アプリ復帰）は<br>
-            　<b>設定タブで個別にON/OFFでき、件数と分は直接入力できます</b><br><br>
+            　<b>自動送信は既定でOFFです</b>。使う場合は設定タブでONにしてください<br>
+            　ONにすると、送信のきっかけ（件数・分ごと・オンライン復帰・<br>
+            　アプリ復帰）を<b>個別にON/OFFでき、件数と分も直接入力できます</b><br><br>
             <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
             　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
             　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
@@ -963,10 +968,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.9.0<br>
+        <div class="s-info">DX棚卸アプリ v4.9.1<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.9.0: 自動送信の条件を設定タブで個別にON/OFF可能に。件数と分も直接入力できます</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.9.1: 自動送信の既定をOFFに変更。OFFのあいだは個別設定を操作できないようにしました</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.9.0: 自動送信の条件を設定タブで個別にON/OFF可能に。件数と分も直接入力できます<br>
           <span style="color:#6b7a99;font-weight:500;">v4.8.0: iPadのカメラ表示の高さを約2/3に縮小（「カメラを停止」ボタンの見切れを解消）<br>
           <span style="color:#6b7a99;font-weight:500;">v4.7.0: QR読取枠を縮小（面積比 iPhone約2/3・iPad/PC約1/2）— 隣のQRをさらに拾いにくく<br>
           <span style="color:#6b7a99;font-weight:500;">v4.6.0: iPad表示を最適化（横幅いっぱいに表示・文字とボタンを拡大・モーダルを中央表示）。iPhoneの表示は変更なし<br>
@@ -1275,7 +1281,8 @@ var AS_MIN_MIN   = 1, AS_MIN_MAX   = 120;
    件数と分は直接入力できる。localStorage に JSON で保存する。
    （v4.4.0〜v4.8.0 は '0'/'1' の文字列だった。loadAutoSendCfg() が移行する） */
 var _asCfg = {
-  on:        true,   /* 全体ON/OFF */
+  on:        false,  /* ★ [v4.9.1] 全体ON/OFF。**既定はOFF**（田嶋さん指示）。
+                        現場が意図せず自動送信されるより、明示的にONにしてもらう方針。 */
   byCount:   true,   /* ① 一定件数たまったとき */
   count:     10,
   byTimer:   true,   /* ② 定期タイマー */
@@ -4058,17 +4065,21 @@ function clampInt(v, lo, hi, def) {
 }
 
 function loadAutoSendCfg() {
-  var d = { on:true, byCount:true, count:10, byTimer:true, minutes:10,
+  /* ★ [v4.9.1] 全体ON/OFF(on)の既定は **false**。
+     個別トリガー(byXxx)の既定は true のまま — 全体をONにしたときに
+     どれも動かない、という分かりにくい状態を避けるため。 */
+  var d = { on:false, byCount:true, count:10, byTimer:true, minutes:10,
             byOnline:true, byVisible:true };
   try {
     var raw = localStorage.getItem(LS_AUTOSEND_KEY);
-    if (raw === null) return d;
+    if (raw === null) return d;   /* 未設定の端末は自動送信OFFで始まる */
     /* ★ v4.4.0〜v4.8.0 は '0'/'1' の文字列。全体ON/OFFだけ引き継ぐ。 */
     if (raw === '0' || raw === '1') { d.on = (raw === '1'); return d; }
     var o = JSON.parse(raw);
     if (!o || typeof o !== 'object') return d;
-    /* !== false としているのは、キーが無い古い保存でも既定ONにするため */
-    d.on        = (o.on        !== false);
+    /* on だけは === true の厳密判定。キーが無い保存を「ON」と誤解しないため。
+       byXxx は !== false（キーが無ければON）で従来どおり。 */
+    d.on        = (o.on        === true);
     d.byCount   = (o.byCount   !== false);
     d.byTimer   = (o.byTimer   !== false);
     d.byOnline  = (o.byOnline  !== false);
@@ -4126,15 +4137,18 @@ function updAutoSendUI() {
       ? 'linear-gradient(135deg,#e07800,#b35f00)'
       : 'linear-gradient(135deg,#0f9e6e,#076e49)';
   }
-  /* 入力欄へ現在値を書き戻す（丸めた結果をそのまま見せる） */
-  if ($('asByCount'))   $('asByCount').checked   = _asCfg.byCount;
-  if ($('asByTimer'))   $('asByTimer').checked   = _asCfg.byTimer;
-  if ($('asByOnline'))  $('asByOnline').checked  = _asCfg.byOnline;
-  if ($('asByVisible')) $('asByVisible').checked = _asCfg.byVisible;
-  if ($('asCount'))   { $('asCount').value   = _asCfg.count;   $('asCount').disabled   = !_asCfg.byCount; }
-  if ($('asMinutes')) { $('asMinutes').value = _asCfg.minutes; $('asMinutes').disabled = !_asCfg.byTimer; }
+  /* 入力欄へ現在値を書き戻す（丸めた結果をそのまま見せる）
+     ★ [v4.9.1] 全体OFFのときは個別チェックも **disabled** にする。
+       以前は薄くするだけだったので、OFFなのに操作できてしまっていた。 */
+  var off = !_asCfg.on;
+  if ($('asByCount'))   { $('asByCount').checked   = _asCfg.byCount;   $('asByCount').disabled   = off; }
+  if ($('asByTimer'))   { $('asByTimer').checked   = _asCfg.byTimer;   $('asByTimer').disabled   = off; }
+  if ($('asByOnline'))  { $('asByOnline').checked  = _asCfg.byOnline;  $('asByOnline').disabled  = off; }
+  if ($('asByVisible')) { $('asByVisible').checked = _asCfg.byVisible; $('asByVisible').disabled = off; }
+  if ($('asCount'))   { $('asCount').value   = _asCfg.count;   $('asCount').disabled   = off || !_asCfg.byCount; }
+  if ($('asMinutes')) { $('asMinutes').value = _asCfg.minutes; $('asMinutes').disabled = off || !_asCfg.byTimer; }
   var cfg = $('asCfg');
-  if (cfg) cfg.style.opacity = _asCfg.on ? '' : '.45';
+  if (cfg) cfg.className = 'as-cfg' + (off ? ' off' : '');
 
   var st = $('autoSendStatus');
   if (st) {
@@ -4147,8 +4161,10 @@ function updAutoSendUI() {
       '状態: ' + (_asCfg.on
         ? '<span style="color:var(--green);font-weight:700;">✔ ON</span>'
         : '<span style="color:var(--warn);font-weight:700;">✘ OFF</span>'),
-      '送信する条件: ' + (conds.length
-        ? conds.join(' / ')
+      /* ★ [v4.9.1] OFFのときは「いま効いている条件」と誤読されないようラベルを変える */
+      (_asCfg.on ? '送信する条件: ' : 'ONにしたときの条件: ') + (conds.length
+        ? (_asCfg.on ? conds.join(' / ')
+                     : '<span style="color:var(--text-light);">' + conds.join(' / ') + '</span>')
         : '<span style="color:var(--warn);font-weight:700;">なし（自動送信されません）</span>'),
       '未送信: ' + _pendCount + '件' + (isOnline() ? '' : '（<span style="color:var(--warn);font-weight:700;">オフライン</span>）')
     ];
