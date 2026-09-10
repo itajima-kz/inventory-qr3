@@ -547,6 +547,15 @@
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     resize:none;line-height:1.35;min-height:2.4em;}
   .reg-hinmei-input:focus{border-bottom-color:var(--blue);}
+  /* ★ [v4.5.0] ⑨ 品名の全角チェック警告。
+     長さ欄(.reg-len-col)と同じ「列ラッパー」方式にしてある。
+     .reg-form-row に flex-wrap:wrap を付ける案は、ラベルと値が別行に折り返って
+     **全行の高さが上がりモーダルが+163px膨らむ**ため採らない（実測して撤回）。 */
+  .reg-hinmei-col{flex:1;min-width:0;}
+  .reg-hinmei-input.warn{border-bottom-color:var(--warn);}
+  .reg-hinmei-msg{display:none;font-size:10px;font-weight:700;
+    color:var(--warn);margin-top:3px;}
+  .reg-hinmei-msg.on{display:block;}
   /* 在庫区分セレクト（モーダル内）*/
   .reg-its-sel{width:100%;font-size:16px;font-weight:500;font-family:var(--font);
     color:var(--text);background:var(--surface);
@@ -811,7 +820,7 @@
             　GASへの接続はコード内に設定済みです<br><br>
             <b>③ スキャンタブでQRまたはOCRで読取</b><br>
             　QR/バーコード: 図番・製番は変更不可（マスタヒット時は品名も変更不可）<br>
-            　QR/バーコード: マスタ未登録時は品名のみ手入力可<br>
+            　QR/バーコード: マスタ未登録時は品名のみ手入力可（<b>品名は任意</b>）<br>
             　OCR: 読取後も図番・品名・製番を手修正可<br>
             　カメラ不使用時は直接入力も可能<br><br>
             <b>④ 場所・担当者・在庫区分を選択</b><br>
@@ -819,6 +828,8 @@
             <b>⑤ 読取後に自動で登録ポップアップが開きます</b><br>
             　数量を直接入力 → 登録ボタンで保存（オフライン対応）<br>
             　Enterキーでも登録可能。リセットで次スキャンへ<br>
+            　<b>マスタ未登録の図番は品名が空でも登録できます</b>（v4.5.0〜）<br>
+            　　品名を入れる場合は<b>全角</b>で（半角だと警告が出ます）<br>
             　<b>Ｈ型鋼・Ｃ型鋼・角パイプ等は「長さ(mm)」欄が自動で出ます</b><br>
             　（品名の先頭で判定。対象外の部材では表示されません）<br>
             　<b>長さ欄が出た場合、長さの入力は必須です</b>（未入力だと登録できません）<br><br>
@@ -855,10 +866,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.4.1<br>
+        <div class="s-info">DX棚卸アプリ v4.5.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.5.0: マスタ未登録時の品名入力を任意に（特注品対応）。品名は全角推奨で半角は警告表示</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
           <span style="color:#6b7a99;font-weight:500;">v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示（案H）<br>
           v4.2.0: 未送信を残したまま閉じると次回起動時に通知（案G）<br>
           v4.1.0: マスタに該当が無い場合は図番末尾の「0」を削らず、読み取った原文のまま登録<br>
@@ -917,7 +929,7 @@
       <div class="reg-op-row" id="regOpRow"></div>
       <!-- 未登録バナー（未登録時のみ表示） -->
       <div class="reg-unreg-note" id="regUnregNote" style="display:none">
-        ⚠ マスタ未登録です。図番と品名を入力
+        ⚠ マスタ未登録です。図番を入力
       </div>
       <!-- ★ [v4.0.0] ④ 特注品バナー（マスタ未登録かつ図番がK/P始まり） -->
       <div class="reg-custom-note" id="regCustomNote" style="display:none">
@@ -937,11 +949,13 @@
       <div class="reg-form-row">
         <div class="reg-form-label">品名</div>
         <div class="reg-form-val hinmei" id="regFvHinmei" style="display:none"></div>
-        <textarea class="reg-hinmei-input" id="regHinmeiInput"
-          style="display:none"
-          placeholder="品名を入力"
-          rows="2"
-          oninput="onRegHinmeiInput()"></textarea>
+        <div class="reg-hinmei-col" id="regHinmeiCol" style="display:none">
+          <textarea class="reg-hinmei-input" id="regHinmeiInput"
+            placeholder="品名（任意・全角）"
+            rows="2"
+            oninput="onRegHinmeiInput()"></textarea>
+          <div class="reg-hinmei-msg" id="regHinmeiMsg">⚠ 品名は全角で入力してください</div>
+        </div>
       </div>
       <!-- ★ [v4.0.0] ③ フォーム行：長さ（対象部材のみ表示・mm整数） -->
       <div class="reg-form-row" id="regLenRow" style="display:none">
@@ -2509,8 +2523,9 @@ function applyCode(code, src) {
     he.value = '';
     curUnit = '個'; curFromMst = false;
     ze.className = 'fi warn'; he.className = 'fi warn';
-    he.placeholder = '（マスタ未登録 — 品名を手入力してください）';
-    toast('マスタ未登録です。品名を手入力してください', 'info');
+    /* ★ [v4.5.0] ⑨ 品名は任意になったので「手入力してください」は誤り */
+    he.placeholder = '（マスタ未登録 — 品名は任意）';
+    toast('マスタ未登録です。品名は任意です', 'info');
   }
 
   /* ★ [v4.0.0] ④ 特注品判定（マスタで品名が得られず、かつ図番がK/P始まり）。
@@ -2658,20 +2673,25 @@ function openRegModal(isHit) {
   /* --- 品名: ヒット時は表示のみ、未登録時は textarea --- */
   var fvH   = document.getElementById('regFvHinmei');
   var inpH  = document.getElementById('regHinmeiInput');
+  /* ★ [v4.5.0] ⑨ 表示の切替は textarea ではなく列ラッパーに対して行う
+     （警告メッセージも一緒に出し入れするため）。 */
+  var colH  = document.getElementById('regHinmeiCol');
   if (hitFlag) {
     fvH.style.display  = '';
-    inpH.style.display = 'none';
+    colH.style.display = 'none';
     fvH.textContent = hinmei || '（品名なし）';
     fvH.className = 'reg-form-val hinmei' + (hinmei ? ' filled' : ' warn');
   } else {
     fvH.style.display  = 'none';
-    inpH.style.display = '';
+    colH.style.display = '';
     inpH.value = hinmei;
   }
 
   /* ★ [v4.0.0] ③④ 長さ欄の表示可否と特注品バナーを更新 */
   updRegLenRow(true);
   updRegCustomNote();
+  /* ★ [v4.5.0] ⑨ 品名の全角チェック（本体フォームで直接打たれた場合もここで拾う） */
+  syncRegHinmei();
 
   /* --- 在庫区分セレクトをモーダル用に同期 --- */
   var itsSrc = document.getElementById('its');
@@ -2744,15 +2764,61 @@ function onRegHinmeiInput() {
   var v = document.getElementById('regHinmeiInput').value || '';
   document.getElementById('hinmei').value = v;
   updRegLenRow();       /* ★ [v4.0.0] ③ 手入力の品名でも長さ欄を追従させる */
+  syncRegHinmei();      /* ★ [v4.5.0] ⑨ 半角が混じっていれば警告を出す */
   updReg();
+}
+
+/* ============================================================
+   ★ [v4.5.0] ⑨ 品名の全角チェック
+
+   【なぜ全角のみなのか】
+   - マスタの品名は全角表記（Ｈ型鋼・Ｃ型鋼…）。半角が混じると表記が揺れる。
+   - ③の長さ判定 needsLength() は**全角前提の先頭一致**なので、
+     半角で「H型鋼」と打つと**長さ欄が出ず、長さが空のまま登録できてしまう**。
+     この取りこぼしを防ぐのが主目的。
+
+   【なぜ登録を止めないのか】
+   ⑨は「特注品の品名入力が現場で負担」という理由で品名を任意にした変更。
+   ここで登録を止めると趣旨が逆戻りする。**警告表示に留める**。
+   必須化したい場合は updReg() の ok 条件に hasHankaku を足すだけでよい。
+
+   判定対象: ASCII可視文字(U+0021-U+007E)と半角カナ(U+FF61-U+FF9F)。
+
+   ★ 半角スペース(U+0020)は**わざと対象外**にしている。
+     GAS側 normText() が全角スペース(U+3000)を半角へ畳んでいるため、
+     **マスタの品名自体が半角スペース区切り**になっている（例「Ｈ型鋼 １００Ｘ１００」）。
+     マスタと同じ表記を手入力しただけで警告が出るのはおかしい。
+     また needsLength() は空白を正規化してから先頭一致するので、
+     半角スペースが混じっても③の長さ判定は壊れない。
+   改行(U+000A)・タブ(U+0009)も範囲外なので、複数行の品名でも誤検知しない。
+============================================================ */
+var HANKAKU_RE = /[\u0021-\u007E\uFF61-\uFF9F]/;
+
+function hasHankaku(v) {
+  return HANKAKU_RE.test(String(v === null || v === undefined ? '' : v));
+}
+
+/* 品名欄の警告表示を更新。入力欄が出ている（＝マスタ未登録）ときだけ判定する。
+   マスタ由来の品名は編集できないので警告しない。 */
+function syncRegHinmei() {
+  var inp = document.getElementById('regHinmeiInput');
+  var msg = document.getElementById('regHinmeiMsg');
+  var col = document.getElementById('regHinmeiCol');
+  if (!inp || !msg || !col) return;
+  var editable = (col.style.display !== 'none');
+  var bad = editable && hasHankaku(inp.value);
+  inp.classList.toggle('warn', bad);
+  msg.className = 'reg-hinmei-msg' + (bad ? ' on' : '');
 }
 
 /* ============================================================
    ★ [v4.0.0] ③ 長さ欄（対象部材のみ表示・mm整数）
    品名の先頭が Ｈ型鋼 / Ｃ型鋼 / 角パイプ … のいずれかに一致したときだけ出す。
    対象外に変わったら値も必ず捨てる（前の部材の長さが残ると誤登録になる）。
-   ※ 未入力でも登録はできる。下線をオレンジにして気付かせるだけに留めている。
-     必須にしたい場合は updReg() 側で ok の条件に加えること。
+   ※ ★ [v4.5.0で訂正] 長さは v4.0.0 で**必須**になっている。
+     判定は isValidLen() に集約され、updReg() / updEmSaveBtn() /
+     regData() / saveEditModal() の4箇所で同じ関数を使う。
+     （このコメントは必須化前の記述が残っていたため訂正した）
 ============================================================ */
 function updRegLenRow(reset) {
   var row = document.getElementById('regLenRow');
@@ -2856,9 +2922,12 @@ function updReg() {
   var isUnreg = regZunoEl && regZunoEl.style.display !== 'none';
   var ok;
   if (isUnreg) {
+    /* ★ [v4.5.0] ⑨ 品名は必須にしない。
+       特注図番はマスタに品名が無く、現場で打たせるのが負担になるため
+       （通常品でマスタ未登録の場合も同じ扱い＝一律で任意。田嶋さん判断）。
+       全角チェックは syncRegHinmei() の警告表示のみで、登録は止めない。 */
     var mz = (document.getElementById('regZunoInput').value || '').trim();
-    var mh = (document.getElementById('regHinmeiInput').value || '').trim();
-    ok = !!(mz && mh && d && p && t);
+    ok = !!(mz && d && p && t);
   } else {
     ok = !!(z && d && p && t);
   }
@@ -2908,7 +2977,9 @@ async function regData() {
   if (regZunoEl && regZunoEl.style.display !== 'none') {
     document.getElementById('zuno').value = regZunoEl.value.trim().toUpperCase();
   }
-  if (regHinmeiEl && regHinmeiEl.style.display !== 'none') {
+  /* ★ [v4.5.0] ⑨ 表示判定は列ラッパー側を見る（textareaは常に display 指定なし） */
+  var regHinmeiCol = document.getElementById('regHinmeiCol');
+  if (regHinmeiEl && regHinmeiCol && regHinmeiCol.style.display !== 'none') {
     document.getElementById('hinmei').value = regHinmeiEl.value.trim();
   }
 
