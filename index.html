@@ -912,6 +912,7 @@
             <b>⑨ QRは枠の中だけを読み取ります（v4.0.0〜）</b><br>
             　製造指示書のようにQRが並ぶ紙面で隣のQRを拾わないよう、<br>
             　画面中央の枠の内側だけをデコードします<br>
+            　<b>v4.7.0で読取枠をさらに絞りました</b>（面積比 iPhone約2/3・iPad約1/2）<br>
             　バーコードは横長のため従来どおり画面全体で読み取ります
           </div>
         </div>
@@ -921,10 +922,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.6.0<br>
+        <div class="s-info">DX棚卸アプリ v4.7.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.6.0: iPad表示を最適化（横幅いっぱいに表示・文字とボタンを拡大・モーダルを中央表示）。iPhoneの表示は変更なし</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.7.0: QR読取枠を縮小（面積比 iPhone約2/3・iPad/PC約1/2）— 隣のQRをさらに拾いにくく</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.6.0: iPad表示を最適化（横幅いっぱいに表示・文字とボタンを拡大・モーダルを中央表示）。iPhoneの表示は変更なし<br>
           <span style="color:#6b7a99;font-weight:500;">v4.5.0: マスタ未登録時の品名入力を任意に（特注品対応）。品名は全角推奨で半角は警告表示<br>
           <span style="color:#6b7a99;font-weight:500;">v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
           <span style="color:#6b7a99;font-weight:500;">v4.3.0: ホーム画面に追加（PWA）対応。未送信件数をアイコンのバッジに表示（案H）<br>
@@ -1158,10 +1160,20 @@ var SCAN_ASPECT_QR  = 1.333;
 
 var OCR_MAX_PX = 800;
 
-/* ★ [v4.0.0] ⑤ QR読取ROI。表示エリアの短辺に対する比率。
+/* ★ [v4.0.0→v4.7.0] ⑤ QR読取ROI。表示エリアの短辺に対する「一辺の」比率。
    小さくするほど狙いを絞れるが、枠に収める操作は難しくなる。
-   ここ1箇所を変えれば表示枠とデコード範囲の両方が同時に変わる。 */
-var QR_ROI_RATIO = 0.60;
+   ここを変えれば表示枠とデコード範囲の両方が同時に変わる（qrGuideBox が唯一の決定箇所）。
+
+   【v4.7.0 の変更】製造指示書で隣のQRを拾わないよう、さらに絞った。
+   指定は**面積**で受けたので、辺の比率は平方根で換算している。
+     - iPhone : 面積を従来の 2/3 → 0.60 × √(2/3) = 0.4899 → 0.49
+     - iPad/PC: 面積を従来の 1/2 → 0.60 × √(1/2) = 0.4243 → 0.42
+   面積比の確認: 0.49²/0.60² = 0.667(≒2/3) / 0.42²/0.60² = 0.490(≒1/2)
+
+   デコード解像度の心配は無い。ROIは表示pxではなく**映像のネイティブ解像度から**
+   切り出すため、例えばiPhoneの一辺122px相当でも映像上は約470pxある。 */
+var QR_ROI_RATIO_PHONE  = 0.49;   /* 従来0.60。面積で約2/3 */
+var QR_ROI_RATIO_TABLET = 0.42;   /* 従来0.60。面積で約1/2 */
 
 /* ★ [v4.0.0] ③ 長さ入力の対象部材。品名の先頭がいずれかに完全一致した
    ときだけ長さ欄を表示する。
@@ -1947,6 +1959,13 @@ function setMode(m) {
    デコード(getQrRoi)の両方がそれを参照する。枠が嘘をつかなくなる。
    バーコードは横長で、狭めると逆に読めなくなるため全画面のまま。
 ============================================================ */
+/* ★ [v4.7.0] タブレット/PCレイアウトかどうか。
+   CSSの @media (min-width:700px) and (min-height:600px) と**必ず同じ条件**にすること。
+   ⑩のカメラ高さ比率と⑤のROI比率の2箇所から使うため、共通関数にして条件のズレを防ぐ。 */
+function isTabletLayout() {
+  return (window.innerWidth >= 700 && window.innerHeight >= 600);
+}
+
 function qrGuideBox() {
   var wrap = document.getElementById('cama');
   if (!wrap) return null;
@@ -1954,7 +1973,9 @@ function qrGuideBox() {
   var dispW = r.width, dispH = r.height;
   if (!dispW || !dispH) return null;
   if (mode === 'qr') {
-    var side = Math.round(Math.min(dispW, dispH) * QR_ROI_RATIO);
+    /* ★ [v4.7.0] 端末に応じて絞り込み量を変える（画面が広いほど強く絞る） */
+    var ratio = isTabletLayout() ? QR_ROI_RATIO_TABLET : QR_ROI_RATIO_PHONE;
+    var side = Math.round(Math.min(dispW, dispH) * ratio);
     return { l: Math.round((dispW - side) / 2), t: Math.round((dispH - side) / 2),
              w: side, h: side, dispW: dispW, dispH: dispH, roi: true };
   }
@@ -2074,8 +2095,7 @@ async function startCam() {
              0.38のままだと 720px幅×0.38高 で横長に潰れ、object-fit:cover により
              映像の上下が大きく切り捨てられてスキャン精度が落ちる。
              ここはCSSでは直せない（高さをJSがpxで決めているため）。 */
-        var isTablet = (window.innerWidth >= 700 && window.innerHeight >= 600);
-        var maxRatio = isTablet ? 0.55 : 0.38;
+        var maxRatio = isTabletLayout() ? 0.55 : 0.38;
         var maxH = Math.round(window.innerHeight * maxRatio);
         if (vw && vh) {
           dh = Math.min(Math.round(dw * vh / vw), maxH);
