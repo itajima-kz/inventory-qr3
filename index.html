@@ -922,10 +922,11 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.7.0<br>
+        <div class="s-info">DX棚卸アプリ v4.8.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.7.0: QR読取枠を縮小（面積比 iPhone約2/3・iPad/PC約1/2）— 隣のQRをさらに拾いにくく</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v4.8.0: iPadのカメラ表示の高さを約2/3に縮小（「カメラを停止」ボタンの見切れを解消）。QR読取枠の大きさは据え置き</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.7.0: QR読取枠を縮小（面積比 iPhone約2/3・iPad/PC約1/2）— 隣のQRをさらに拾いにくく<br>
           <span style="color:#6b7a99;font-weight:500;">v4.6.0: iPad表示を最適化（横幅いっぱいに表示・文字とボタンを拡大・モーダルを中央表示）。iPhoneの表示は変更なし<br>
           <span style="color:#6b7a99;font-weight:500;">v4.5.0: マスタ未登録時の品名入力を任意に（特注品対応）。品名は全角推奨で半角は警告表示<br>
           <span style="color:#6b7a99;font-weight:500;">v4.4.1: 自動送信の定期間隔を10分に変更<br><span style="color:#6b7a99;font-weight:500;">v4.4.0: 自動送信に対応（10件ごと／10分ごと／オンライン復帰時／画面復帰時）。設定タブでOFF可（案A）</span></span><br>
@@ -1173,7 +1174,21 @@ var OCR_MAX_PX = 800;
    デコード解像度の心配は無い。ROIは表示pxではなく**映像のネイティブ解像度から**
    切り出すため、例えばiPhoneの一辺122px相当でも映像上は約470pxある。 */
 var QR_ROI_RATIO_PHONE  = 0.49;   /* 従来0.60。面積で約2/3 */
-var QR_ROI_RATIO_TABLET = 0.42;   /* 従来0.60。面積で約1/2 */
+
+/* ★ [v4.8.0] タブレットのROI比率を 0.42 → 0.63 に「上げて」いる。
+   数字だけ見ると緩めたようだが、**枠の実寸は変えないための調整**。
+   同じv4.8.0でカメラの高さを 540px→360px に下げたため、
+   min(幅,高さ) が 540 から 360 に変わった。比率0.42のままだと
+   枠が 227px→151px と、依頼(面積1/2)を大きく下回って縮んでしまう。
+     360 x 0.63 = 227px  … iPad縦。v4.7.0の227pxを維持
+     309 x 0.63 = 195px  … iPad横。v4.7.0の193pxを維持
+   **枠の大きさを変えたいときは、この比率ではなく実寸(px)で指示をもらい、
+     そのときの min(幅,高さ) から逆算すること。** */
+var QR_ROI_RATIO_TABLET = 0.63;
+
+/* ★ [v4.8.0] タブレットのカメラ撮像エリア高さの固定上限(px)。
+   詳細は _setCamH() 内のコメント参照。 */
+var TABLET_CAM_MAX_H = 360;
 
 /* ★ [v4.0.0] ③ 長さ入力の対象部材。品名の先頭がいずれかに完全一致した
    ときだけ長さ欄を表示する。
@@ -2090,13 +2105,26 @@ async function startCam() {
         /* ★ [v3.3.1] 上限を innerHeight×0.38 に抑える
            ズーム/ライトオーバーレイ（~72px）＋カード余白分を確保するため
            0.55→0.38 に縮小。OCRは変更なし（オーバーレイが映像内に重なるため問題なし）
-           ★ [v4.6.0] ⑩ タブレットは画面が広く縦にも余裕があるので比率を戻す。
+           ★ [v4.6.0] ⑩ タブレットは画面が広く縦にも余裕があるので比率を戻した。
              判定条件はCSSの @media (min-width:700px) and (min-height:600px) と一致させること。
-             0.38のままだと 720px幅×0.38高 で横長に潰れ、object-fit:cover により
-             映像の上下が大きく切り捨てられてスキャン精度が落ちる。
-             ここはCSSでは直せない（高さをJSがpxで決めているため）。 */
-        var maxRatio = isTabletLayout() ? 0.55 : 0.38;
-        var maxH = Math.round(window.innerHeight * maxRatio);
+             ここはCSSでは直せない（高さをJSがpxで決めているため）。
+
+           ★ [v4.8.0] タブレットの映像が大きすぎて「カメラを停止」ボタンが
+             画面外に押し出される（実測: iPad横で128pxはみ出し、iPad縦も余裕151pxのみで
+             実機Safariのアドレスバー等を差し引くと見切れる）。**高さを約2/3に下げる**。
+
+             上限を「比率0.37」と「360px」の**小さい方**にしているのは、
+             向きによって高さの決まり方が違うため:
+               - iPad縦(834x1194): 高さは**映像比4:3から**決まっていた（720x0.75=540）。
+                 比率だけ下げても540のままなので、**360pxの固定上限**で 540→360（=2/3）にする。
+               - iPad横(1194x834): 高さは**上限側**で決まっていた（834x0.55=459）。
+                 0.55x2/3=0.3667≒0.37 で 459→309（=2/3）になる。
+             結果としてどちらの向きでも約2/3になる。
+             ※ 幅720pxは維持するので、縦向きでは映像が 4:3→2:1 相当になり
+               object-fit:cover で上下が切り取られる。バーコードは横長なので実害は小さい。 */
+        var maxH = isTabletLayout()
+          ? Math.min(Math.round(window.innerHeight * 0.37), TABLET_CAM_MAX_H)
+          : Math.round(window.innerHeight * 0.38);
         if (vw && vh) {
           dh = Math.min(Math.round(dw * vh / vw), maxH);
         } else {
