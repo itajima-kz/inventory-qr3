@@ -123,6 +123,10 @@
   .op-row.loc{align-items:center;margin-top:8px;}
   .op-row.loc .fl{margin:0;flex-shrink:0;}
   .op-row.loc .fi{flex:1 1 0;width:auto;min-width:0;}
+  /* ★ [v5.0.4] 見出しが「部署・担当者・棚卸場所」に伸びた分、幅375pxのiPhoneで「🔒 保持中」が
+     右上の「クリア」に3px重なった（実測）。この見出しだけ字間とバッジの間隔を少し詰める。 */
+  .card-op .clabel{letter-spacing:.02em;}
+  .card-op .lock-badge{margin-left:3px;}
   .clr-btn{position:absolute;top:10px;right:12px;font-family:var(--font);
     font-size:11px;font-weight:700;padding:3px 8px;
     border:2px solid var(--orange);border-radius:var(--radius-xs);
@@ -787,7 +791,8 @@
     <div class="card card-op">
       <!-- ★ [v5.0.0] ① 旧「場所」は中身が部署（プルダウンマスタC列）だったので「部署」に改め、
            棚の場所（A列）を新設。部署は担当者の絞り込み専用で、シートへは出力しない。 -->
-      <div class="clabel">部署・担当者・場所
+      <!-- ★ [v5.0.4] 画面の呼び方を「場所」→「棚卸場所」に統一（田嶋さん指示。シートJ列の見出しと同じ） -->
+      <div class="clabel">部署・担当者・棚卸場所
         <span class="lock-badge" id="lkbg">&#128274; 保持中</span>
       </div>
       <button type="button" class="clr-btn" onclick="clrOp()">クリア</button>
@@ -806,7 +811,7 @@
         </div>
       </div>
       <div class="op-row loc">
-        <label class="fl" for="ls">場所</label>
+        <label class="fl" for="ls">棚卸場所</label>
         <select class="fi" id="ls" onchange="onLoc()">
           <option value="">&#9135; 選択 &#9135;</option>
         </select>
@@ -1014,11 +1019,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.3<br>
+        <div class="s-info">DX棚卸アプリ v5.0.4<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.3: クイックガイドの2つのボタンを2行表示・同じ色に統一</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.4: 画面の「場所」の表記を「棚卸場所」に変更</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.3: クイックガイドの2つのボタンを2行表示・同じ色に統一</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.2: 設定タブ「使い方」にクイックガイド（スマホ版）を開くボタンを追加</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.1: 登録画面の「場所未選択」表示が縦に大きく伸びる不具合を修正</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.0: 「場所」を「部署」に改め、棚の「場所」を新設（必須）。担当者コードを表示・保存。修正画面で場所・担当者・在庫区分も変更可。OCRの待ち時間対策（事前接続・遅い時の再送・解析中表示）。設定タブの文字を拡大し、使い方を操作説明書へのリンクに変更</span><br>
@@ -1229,7 +1235,7 @@
       <!-- ★ [v5.0.0] ① 場所・在庫区分・部署・担当者も直せるようにした（旧: 表示のみ） -->
       <div class="em-grid2">
         <div class="em-field">
-          <div class="em-label">場所</div>
+          <div class="em-label">棚卸場所</div>
           <select class="em-sel" id="emLocSel" onchange="updEmSaveBtn()"></select>
         </div>
         <div class="em-field">
@@ -2246,7 +2252,7 @@ function clrOp() {
     sessionStorage.removeItem('inv_loc');
   } catch(e2){}
   updLock(); updReg();
-  toast('部署・担当者・場所をクリアしました', 'ok');
+  toast('部署・担当者・棚卸場所をクリアしました', 'ok');
 }
 
 function updLock() {
@@ -3144,7 +3150,7 @@ function openRegModal(isHit) {
      コードは省いてバッジを1行に収め、モーダルの高さを変えない。未選択は何が足りないかを出す。 */
   var opRow = document.getElementById('regOpRow');
   opRow.innerHTML = '';
-  [[locV, '場所未選択'], [persP ? persP.name : '', '担当者未選択']].forEach(function(pair) {
+  [[locV, '棚卸場所未選択'], [persP ? persP.name : '', '担当者未選択']].forEach(function(pair) {   /* ★ [v5.0.4] */
     var sp = document.createElement('span');
     sp.className = 'reg-op-badge' + (pair[0] ? '' : ' unset');   /* ★ [v5.0.1] empty は .empty と衝突 */
     sp.textContent = pair[0] || pair[1];
@@ -3477,7 +3483,7 @@ async function regData() {
   var regBtnChk = document.getElementById('regModalBtn');
   if (regBtnChk && regBtnChk.disabled) {
     var miss = [];
-    if (!document.getElementById('ls').value) miss.push('場所');
+    if (!document.getElementById('ls').value) miss.push('棚卸場所');
     if (!curPerson()) miss.push('担当者');
     var regItsChk = document.getElementById('regItsSelect');
     if (regItsChk && !regItsChk.value) miss.push('在庫区分');
@@ -3652,7 +3658,7 @@ async function rendHist() {
       '<div class="hi-info">' +
         '<div class="hi-code">' + h(i.zuno) + ' <span style="font-size:9px;opacity:.7;">' + srcLabel + '</span>' + customTag + '</div>' +
         '<div class="hi-name">' + h(i.hinmei || '—') + '</div>' +
-        '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + (i.location ? h(i.location) : '<span style="color:#e07800;font-weight:700;">場所未設定</span>') + ' / ' + h(i.personnel) +
+        '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + (i.location ? h(i.location) : '<span style="color:#e07800;font-weight:700;">棚卸場所未設定</span>') + ' / ' + h(i.personnel) +
           (i.seiban ? ' / 製番:' + h(i.seiban) : '') +
           (i.length ? ' / 長さ:' + h(i.length) + 'mm' : '') + '</div>' +
         (hasError ? '<div class="hi-err">⚠ ' + h(i.last_error) + '</div>' : '') +
@@ -4137,7 +4143,7 @@ async function saveEditModal() {
   if (!document.getElementById('emLocSel').value || !document.getElementById('emPersSel').value
       || !document.getElementById('emItsSel').value) {
     updEmSaveBtn();
-    toast('場所・担当者・在庫区分を選んでください', 'err');
+    toast('棚卸場所・担当者・在庫区分を選んでください', 'err');
     return;
   }
 
