@@ -169,6 +169,27 @@
     border-color:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(46,107,224,.35);}
   .mbtn.on.ocr{background:linear-gradient(135deg,var(--purple),#5a1fd1);
     border-color:var(--purple);color:#fff;box-shadow:0 2px 8px rgba(123,63,242,.35);}
+  /* ★ [v5.0.8] 手入力は打ち間違いに気を付けてほしいので、注意色（オレンジ）にする */
+  .mbtn.on.man{background:linear-gradient(135deg,#e07800,#b35f00);
+    border-color:#e07800;color:#fff;box-shadow:0 2px 8px rgba(224,120,0,.35);}
+  /* ★ [v5.0.8] 4つ並べると幅375pxで1つ約67pxしかなく、「🏷 バーコード」を1行に置くと「…」で切れる。
+     アイコンを上、文字を下に積む。「OCR（図番）」は入り切らない幅では「（図番）」の前で折り返す。 */
+  .mbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    white-space:normal;line-height:1.2;padding:6px 2px;}
+  .mbtn .mb-ico{font-size:17px;line-height:1.1;}
+  .mbtn .mb-txt{font-size:13px;word-break:keep-all;}
+  /* ★ [v5.0.8] 手入力の入力欄（カメラ枠と開始ボタンの代わりに出す） */
+  .man-box{display:none;background:var(--surface);border:2px solid #f3c48a;border-radius:var(--radius-sm);
+    padding:12px;margin-bottom:7px;}
+  .man-box.on{display:block;}
+  .man-lbl{font-size:16px;font-weight:700;color:var(--blue-dk);margin-bottom:6px;}
+  #mani{width:100%;box-sizing:border-box;font-size:24px;font-weight:800;text-align:center;letter-spacing:2px;
+    font-family:monospace;padding:10px;border:2px solid var(--blue-lt);border-radius:8px;outline:none;
+    -webkit-appearance:none;text-transform:uppercase;background:#fff;color:var(--text);}
+  #mani:focus{border-color:#e07800;box-shadow:0 0 0 3px rgba(224,120,0,.18);}
+  .man-hint{font-size:14px;color:var(--text-light);text-align:center;margin-top:6px;line-height:1.5;text-wrap:balance;}
+  .scanbtn.mani{background:linear-gradient(135deg,var(--green),#076e49);
+    box-shadow:0 3px 12px rgba(7,110,73,.38);display:none;}
   .cam-area{position:relative;width:100%;background:#000;
     border-radius:var(--radius-sm);overflow:hidden;margin-bottom:7px;display:none;}
   #cv{width:100%;display:block;object-fit:cover;}
@@ -367,6 +388,7 @@
   .em-src-tag.jan{background:rgba(15,158,110,.15);color:#0f9e6e;}
   .em-src-tag.qr{background:rgba(46,107,224,.15);color:#2e6be0;}
   .em-src-tag.ocr{background:rgba(123,63,242,.15);color:#7b3ff2;}
+  .em-src-tag.manual{background:rgba(224,120,0,.15);color:#c06000;}   /* ★ [v5.0.8] */
   .em-field{margin-bottom:12px;}
   .em-label{font-size:11px;color:var(--text-light);font-weight:600;margin-bottom:4px;}
   .em-val{font-size:13px;color:var(--text);background:var(--bg);
@@ -757,6 +779,7 @@
     .fl{font-size:18px;}
     .fi{font-size:19px;padding:12px 34px 12px 14px;}
     .mbtn{font-size:17px;padding:12px 8px;}
+    .mbtn .mb-txt{font-size:17px;} .mbtn .mb-ico{font-size:21px;}   /* ★ [v5.0.8] */
     .scanbtn{font-size:19px;padding:16px;}
     /* カメラは幅いっぱいに広げると 4:3 の映像が横長に潰れ、object-fit:cover で
        上下が大きく切り捨てられる。720pxで頭打ちにして中央寄せする。
@@ -845,11 +868,13 @@
     </div>
 
     <div class="card card-scan">
-      <div class="clabel">スキャン読取（バーコード / QR / OCR）</div>
+      <!-- ★ [v5.0.8] 読み取り方法に「手入力」を追加（田嶋さん判断）。見出しにも手入力を含める -->
+      <div class="clabel">スキャン読取・手入力</div>
       <div class="mode-tog">
-        <button type="button" class="mbtn on jan" id="mjan" onclick="setMode('jan')">&#127991; バーコード</button>
-        <button type="button" class="mbtn qr"    id="mqr"  onclick="setMode('qr')">&#128247; QR</button>
-        <button type="button" class="mbtn ocr"   id="mocr" onclick="setMode('ocr')">&#128269; OCR（図番）</button>
+        <button type="button" class="mbtn on jan" id="mjan" onclick="setMode('jan')"><span class="mb-ico">&#127991;</span><span class="mb-txt">バーコード</span></button>
+        <button type="button" class="mbtn qr"    id="mqr"  onclick="setMode('qr')"><span class="mb-ico">&#128247;</span><span class="mb-txt">QR</span></button>
+        <button type="button" class="mbtn ocr"   id="mocr" onclick="setMode('ocr')"><span class="mb-ico">&#128269;</span><span class="mb-txt">OCR<wbr>（図番）</span></button>
+        <button type="button" class="mbtn man"   id="mman" onclick="setMode('manual')"><span class="mb-ico">&#9000;</span><span class="mb-txt">手入力</span></button>
       </div>
       <div class="cam-area" id="cama">
         <video id="cv" playsinline autoplay muted></video>
@@ -891,8 +916,19 @@
       </div>
       <div class="cam-ph" id="camph">
         <div class="cam-ph-ico" id="ph-ico">&#128247;</div>
-        <div class="cam-ph-txt" id="ph-txt">カメラを起動してQRコードをスキャン<br>または下の手入力欄に直接入力</div>
+        <div class="cam-ph-txt" id="ph-txt">カメラを起動してバーコードをスキャン</div>
       </div>
+      <!-- ★ [v5.0.8] 手入力。カメラ枠と開始ボタンの代わりに出す。
+           旧版の案内「または下の手入力欄に直接入力」は、実際には画面に出ていない欄を指していたので削除した。 -->
+      <div class="man-box" id="manbox">
+        <div class="man-lbl">図番を入力</div>
+        <input id="mani" type="text" placeholder="例: HF120100"
+          autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+          oninput="maniEdit(event)" oncompositionend="maniEdit(event)"
+          onkeydown="if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); doManualSrch(); }">
+        <div class="man-hint">入力して「マスタ検索」を押すと登録画面が開きます</div>
+      </div>
+      <button type="button" class="scanbtn mani" id="sb-mani" onclick="doManualSrch()">&#128270; マスタ検索</button>
       <button type="button" class="scanbtn janm" id="sb-start" onclick="startCam()">&#127991; バーコードスキャン開始</button>
       <button type="button" class="scanbtn stop" id="sb-stop"  onclick="stopCam()">&#9209; カメラを停止</button>
       <button type="button" class="scanbtn cap"  id="sb-cap"   onclick="doOCR()">&#128248; OCRキャプチャ</button>
@@ -1050,11 +1086,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.7<br>
+        <div class="s-info">DX棚卸アプリ v5.0.8<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.7: OCRの図番を全部消して打ち直すと「マスタ検索」ボタンが出ない不具合を修正。全角で入力した図番も半角に直します</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.8: 読み取り方法に「手入力」を追加（マスタに無い図番は確認のうえ登録可・履歴に手入力タグ）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.7: OCRの図番を全部消して打ち直すと「マスタ検索」ボタンが出ない不具合を修正。全角で入力した図番も半角に直します</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.6: 「マニュアル」タブを追加（設定の使い方を移動）。タブの文字を少し大きく</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.5: 履歴タブ・マスタタブの文字を大きく（スキャンタブの見出しと同じ大きさ）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.4: 画面の「場所」の表記を「棚卸場所」に変更</span><br>
@@ -2304,6 +2341,7 @@ function setMode(m) {
   document.getElementById('mjan').className = 'mbtn' + (m === 'jan' ? ' on jan' : '');
   document.getElementById('mqr').className  = 'mbtn' + (m === 'qr'  ? ' on qr'  : '');
   document.getElementById('mocr').className = 'mbtn' + (m === 'ocr' ? ' on ocr' : '');
+  document.getElementById('mman').className = 'mbtn' + (m === 'manual' ? ' on man' : '');   /* ★ [v5.0.8] */
   var sb = document.getElementById('sb-start');
   if (m === 'jan') {
     sb.className = 'scanbtn janm';
@@ -2311,16 +2349,39 @@ function setMode(m) {
   } else if (m === 'qr') {
     sb.className = 'scanbtn qrm';
     sb.innerHTML = '&#128247; カメラを起動する';
-  } else {
+  } else if (m === 'ocr') {
     sb.className = 'scanbtn ocrm';
     sb.innerHTML = '&#128269; OCRカメラを起動する';
   }
-  document.getElementById('ph-ico').textContent = m === 'ocr' ? '🔍' : (m === 'jan' ? '🏷️' : '📷');
-  document.getElementById('ph-txt').innerHTML = m === 'jan'
-    ? 'カメラを起動してバーコードをスキャン<br>または下の手入力欄に直接入力'
-    : m === 'qr'
-    ? 'カメラを起動してQRコードをスキャン<br>または下の手入力欄に直接入力'
-    : 'カメラを起動してOCRで図番を読取<br>または下の手入力欄に直接入力';
+  /* ★ [v5.0.8] 「または下の手入力欄に直接入力」は削除（実在しない欄を指していた。田嶋さん指示） */
+  if (m !== 'manual') {
+    document.getElementById('ph-ico').textContent = m === 'ocr' ? '🔍' : (m === 'jan' ? '🏷️' : '📷');
+    document.getElementById('ph-txt').innerHTML = m === 'jan'
+      ? 'カメラを起動してバーコードをスキャン'
+      : m === 'qr'
+      ? 'カメラを起動してQRコードをスキャン'
+      : 'カメラを起動してOCRで図番を読取';
+  }
+
+  /* ★ [v5.0.8] 手入力: カメラを止め、カメラ枠と開始ボタンの代わりに入力欄とマスタ検索ボタンを出す。
+     stopCam() はカメラ枠と開始ボタンを表示に戻すので、止めた後で出し分けること。 */
+  var isMan = (m === 'manual');
+  if (isMan && camOn) stopCam();
+  document.getElementById('manbox').classList.toggle('on', isMan);
+  document.getElementById('sb-mani').style.display = isMan ? 'flex' : 'none';
+  if (!camOn) {
+    document.getElementById('camph').style.display = isMan ? 'none' : 'flex';
+    sb.style.display = isMan ? 'none' : 'flex';
+  }
+  if (isMan) {
+    /* OCRの結果が残っていれば引き継ぐ（読み違いを手で直したい場面を想定） */
+    var opiV = (document.getElementById('opi').value || '').trim();
+    var maniEl = document.getElementById('mani');
+    if (opiV && opiV !== '----' && !maniEl.value) maniEl.value = opiV;
+    document.getElementById('obox').classList.remove('on');
+    document.getElementById('sb-srch').style.display = 'none';
+    try { maniEl.focus(); } catch(e) {}
+  }
   if (camOn) {
     updGuide();
     if (_setCamH) _setCamH();
@@ -2444,6 +2505,7 @@ function updGuide() {
    ============================================================ */
 async function startCam() {
   if (camOn) return;
+  if (mode === 'manual') return;   /* ★ [v5.0.8] 手入力ではカメラを使わない */
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     toast('カメラ非対応またはHTTPS環境が必要です', 'err'); return;
   }
@@ -2980,6 +3042,47 @@ function opiEdit(e) {
   updOcrSrchBtn();
 }
 
+/* ============================================================
+   ★ [v5.0.8] 手入力
+   - 入力の書き換え（全角→半角・大文字・記号除去）は OCR欄と同じく「確定後」だけ行う（変換を壊さない）
+   - 末尾0の削り（stripTrailingZeroSpace）はしない。末尾0はバーコード側の付加で、手入力は印字どおり打つため
+   - マスタに無い図番は確認メッセージを出し、OKなら登録へ進む（田嶋さん判断）。K・P始まりは特注品になる旨を添える
+   ============================================================ */
+function maniEdit(e) {
+  if (e && e.isComposing) return;
+  var el  = document.getElementById('mani');
+  var raw = el.value;
+  var up  = toHalfAlnum(raw).toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  if (raw !== up) {
+    var pos  = el.selectionStart;
+    var diff = raw.length - up.length;
+    setTimeout(function() {
+      el.value = up;
+      var np = Math.max(0, pos - diff);
+      try { el.setSelectionRange(np, np); } catch(e2) {}
+    }, 0);
+  }
+}
+
+function doManualSrch() {
+  var el   = document.getElementById('mani');
+  var code = toHalfAlnum(el.value).trim().toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  el.value = code;
+  if (!code) { toast('図番を入力してください', 'err'); try { el.focus(); } catch(e) {} return; }
+
+  var key = stripSymbols(code);
+  if (!findMasterByCode(key)) {
+    var msg = '「' + code + '」はマスタに登録がありません。\n'
+      + (isCustomRecord(key, '')
+          ? 'K・Pで始まるため、特注品として登録されます。\n'
+          : '図番に間違いがないか確認してください。\n')
+      + '\nこのまま登録しますか？';
+    if (!confirm(msg)) { try { el.focus(); el.select(); } catch(e) {} return; }
+  }
+  el.blur();
+  applyCode(code, 'manual');
+}
+
 /* ★ [v5.0.7] OCRの図番欄に値があれば「マスタ検索」ボタンを出す（'----' は未読取の表示なので除く） */
 function updOcrSrchBtn() {
   var v = (document.getElementById('opi').value || '').trim();
@@ -3088,8 +3191,8 @@ function applyCode(code, src) {
      ここで確定させ、登録モーダルのバナー表示と rec.is_custom に使う。 */
   curIsCustom = isCustomRecord(ze.value, hit ? hit.product_name : '');
 
-  /* ★ [v3.0.1] JAN/QR読取時にOCR結果ボックスをクリア（③バグ修正） */
-  if (src === 'jan' || src === 'qr') {
+  /* ★ [v3.0.1] JAN/QR読取時にOCR結果ボックスをクリア（③バグ修正）。★ [v5.0.8] 手入力も同じ */
+  if (src === 'jan' || src === 'qr' || src === 'manual') {
     var opiEl = document.getElementById('opi');
     if (opiEl) { opiEl.value = '----'; opiEl.className = ''; }
     var ophEl = document.getElementById('oph');
@@ -3123,7 +3226,7 @@ function applyCode(code, src) {
 
   /* ★ [v3.1.5] JAN/QR/OCR読取後 → 登録情報モーダルを自動表示
      マスタ未登録時もモーダルを開き、図番・品名を手入力できるようにする */
-  if (src === 'jan' || src === 'qr' || src === 'ocr') {
+  if (src === 'jan' || src === 'qr' || src === 'ocr' || src === 'manual') {   /* ★ [v5.0.8] 手入力も登録画面を開く */
     setTimeout(function() { openRegModal(!!hit); }, 120);
   }
 }
@@ -3270,7 +3373,7 @@ function openRegModal(isHit) {
   /* --- 製番行: OCRまたは未登録時は入力可 --- */
   var seiRow = document.getElementById('regSeiRow');
   var seiInp = document.getElementById('regSeiInput');
-  if (curScanSrc === 'ocr' || !hitFlag) {
+  if (curScanSrc === 'ocr' || curScanSrc === 'manual' || !hitFlag) {   /* ★ [v5.0.8] 手入力も製番を入力できる */
     seiRow.style.display = '';
     seiInp.value = document.getElementById('sei').value || '';
   } else {
@@ -3580,7 +3683,7 @@ async function regData() {
 
   /* ★ [v3.1.0] OCR時はモーダルの製番入力欄から取得、それ以外は元のsei欄 */
   var seiVal = '';
-  if (curScanSrc === 'ocr') {
+  if (curScanSrc === 'ocr' || curScanSrc === 'manual') {   /* ★ [v5.0.8] */
     var regSeiEl = document.getElementById('regSeiInput');
     seiVal = regSeiEl ? regSeiEl.value.trim() : '';
     /* 本体側のsei欄にも同期 */
@@ -3649,6 +3752,7 @@ function resetScan() {
   if (camOn) stopCam();
   var opi = document.getElementById('opi');
   opi.value = '----'; opi.className = '';
+  var maniR = document.getElementById('mani'); if (maniR) maniR.value = '';   /* ★ [v5.0.8] 次の入力に備えて空にする */
   document.getElementById('oph').textContent = 'OCR読み取り後、手修正も可能です';
   document.getElementById('obox').classList.remove('on');
   document.getElementById('sb-srch').style.display = 'none';
@@ -3700,7 +3804,8 @@ async function rendHist() {
     if (i.sent_flag) classes += ' sent';
     else if (hasError) classes += ' errflag';
     /* ★ [v3.4.0] scan_srcタグ */
-    var srcLabel = i.scan_src === 'ocr' ? '🔬OCR' : (i.scan_src === 'qr' ? '📷QR' : '🏷バーコード');
+    var srcLabel = i.scan_src === 'ocr' ? '🔬OCR' : (i.scan_src === 'qr' ? '📷QR'
+      : (i.scan_src === 'manual' ? '⌨手入力' : '🏷バーコード'));   /* ★ [v5.0.8] 手入力タグ */
     /* ★ [v4.0.0] ④ 特注品は別シートへ送られるので履歴上でも区別できるようにする */
     var customTag = i.is_custom
       ? ' <span class="hi-tag">特注</span>'   /* ★ [v5.0.5] 文字サイズはCSS側でそろえる */
@@ -3936,7 +4041,8 @@ async function openEditModal(id) {
   _editItem  = item;
   _emHitData = null;
 
-  var isOcr = (item.scan_src === 'ocr') || false;
+  /* ★ [v5.0.8] 手入力で登録したものも、OCRと同じく図番・製番を直せる */
+  var isOcr = (item.scan_src === 'ocr' || item.scan_src === 'manual');
 
   /* ヘッダータイトル */
   document.getElementById('emTitle').textContent =
@@ -3944,7 +4050,7 @@ async function openEditModal(id) {
 
   /* スキャン種別タグ */
   var tag = document.getElementById('emSrcTag');
-  var srcMap = { jan: 'バーコード', qr: 'QR コード', ocr: 'OCR（図番認識）' };
+  var srcMap = { jan: 'バーコード', qr: 'QR コード', ocr: 'OCR（図番認識）', manual: '手入力' };
   var srcCls = item.scan_src || 'jan';
   tag.textContent = srcMap[srcCls] || srcCls;
   tag.className = 'em-src-tag ' + srcCls;
@@ -4041,8 +4147,8 @@ function updEmSaveBtn() {
   if (!btn || !_editItem) return;
   var qty = parseInt(document.getElementById('emQtyInput').value, 10);
   var ok  = !isNaN(qty) && qty >= 0;
-  /* OCR時は図番が空だと保存不可 */
-  if (_editItem.scan_src === 'ocr') {
+  /* OCR時は図番が空だと保存不可（★ [v5.0.8] 手入力も同じ） */
+  if (_editItem.scan_src === 'ocr' || _editItem.scan_src === 'manual') {
     var z = document.getElementById('emZunoInput').value.trim();
     ok = ok && z.length > 0;
   }
@@ -4223,7 +4329,7 @@ async function saveEditModal() {
     _editItem.personnelCode = emPers.code;
   }
 
-  if (_editItem.scan_src === 'ocr') {
+  if (_editItem.scan_src === 'ocr' || _editItem.scan_src === 'manual') {   /* ★ [v5.0.8] */
     /* 図番修正 */
     var newZuno = stripSymbols(document.getElementById('emZunoInput').value.trim().toUpperCase());
     var oldZuno = stripSymbols(oldItem.zuno || '');
