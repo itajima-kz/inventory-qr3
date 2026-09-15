@@ -994,15 +994,16 @@
         <div class="s-row">
           <a class="ref-btn s-link" href="https://itajima-kz.github.io/inventory-qr3/quickref.pdf"
              target="_blank" rel="noopener"
-             style="background:linear-gradient(135deg,#0f9e6e,#0b7a54);">&#128196; クイックガイド<wbr>（A4版）を開く</a>
+             style="background:linear-gradient(135deg,#0f9e6e,#0b7a54);">&#128196; クイックガイド<br>（A4版）を開く</a>
         </div>
         <!-- ★ [v5.0.2] スマホ版クイックガイド（1ページ2項目・12ページ）を追加（田嶋さん指示）。
-             A4版と同じガイドの別版なので、同じ緑の枠線だけのボタンにして仲間だと分かるようにした。
-             2つを区別できるよう、既存ボタンの表記も「（PDF）」→「（A4版）」に変更。 -->
+             2つを区別できるよう、既存ボタンの表記も「（PDF）」→「（A4版）」に変更。
+             ★ [v5.0.3] 2つとも「クイックガイド」の後ろで必ず改行（<br>。iPadなど幅が広くても2行）、
+             色はA4版と同じ緑に統一（田嶋さん指示。v5.0.2の枠線だけのボタンはやめた）。 -->
         <div class="s-row">
           <a class="ref-btn s-link" href="https://itajima-kz.github.io/inventory-qr3/quickref-mobile.pdf"
              target="_blank" rel="noopener"
-             style="background:#fff;color:#0b7a54;border:2px solid #0f9e6e;box-shadow:none;">&#128241; クイックガイド<wbr>（スマホ版）を開く</a>
+             style="background:linear-gradient(135deg,#0f9e6e,#0b7a54);">&#128241; クイックガイド<br>（スマホ版）を開く</a>
         </div>
         <div class="s-row" id="docHintRow" style="display:none">
           <div class="s-info">アプリの画面の中で開いたときは、<b>画面の左端から右へスワイプ</b>すると戻れます。</div>
@@ -1013,11 +1014,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.2<br>
+        <div class="s-info">DX棚卸アプリ v5.0.3<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.2: 設定タブ「使い方」にクイックガイド（スマホ版）を開くボタンを追加</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.3: クイックガイドの2つのボタンを2行表示・同じ色に統一</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.2: 設定タブ「使い方」にクイックガイド（スマホ版）を開くボタンを追加</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.1: 登録画面の「場所未選択」表示が縦に大きく伸びる不具合を修正</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.0: 「場所」を「部署」に改め、棚の「場所」を新設（必須）。担当者コードを表示・保存。修正画面で場所・担当者・在庫区分も変更可。OCRの待ち時間対策（事前接続・遅い時の再送・解析中表示）。設定タブの文字を拡大し、使い方を操作説明書へのリンクに変更</span><br>
           <span style="color:#e07800;font-weight:700;">※ v5.0.0はGASの更新と、スプレッドシートの列移行（migrateLayoutV5）が必要です</span><br>
