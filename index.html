@@ -1050,11 +1050,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.6<br>
+        <div class="s-info">DX棚卸アプリ v5.0.7<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.6: 「マニュアル」タブを追加（設定の使い方を移動）。タブの文字を少し大きく</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.7: OCRの図番を全部消して打ち直すと「マスタ検索」ボタンが出ない不具合を修正。全角で入力した図番も半角に直します</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.6: 「マニュアル」タブを追加（設定の使い方を移動）。タブの文字を少し大きく</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.5: 履歴タブ・マスタタブの文字を大きく（スキャンタブの見出しと同じ大きさ）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.4: 画面の「場所」の表記を「棚卸場所」に変更</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.3: クイックガイドの2つのボタンを2行表示・同じ色に統一</span><br>
@@ -2940,7 +2941,7 @@ function capFrame() {
    OCR読取時のみ画面表示はハイフン有りでOK（Bug-3）
    ============================================================ */
 function normalizeOcrCode(raw) {
-  var s = raw.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  var s = toHalfAlnum(raw).toUpperCase().replace(/[^A-Z0-9\-]/g, '');   /* ★ [v5.0.7] 全角→半角 */
   s = s.replace(/^H15/, 'HF');
   return s;
 }
@@ -2949,6 +2950,12 @@ function normalizeOcrCode(raw) {
    OCR編集
    ============================================================ */
 function opiEdit(e) {
+  /* ★ [v5.0.7] 「マスタ検索」ボタンの表示は、変換中（isComposing）でも必ず更新する。
+     旧実装は変換中なら何もせず return していた。iPhoneの日本語キーボードで打つと「確定」を押すまで
+     ずっと変換中なので、図番を全部消して（＝ボタンが隠れる）から打ち直すと、確定するまで
+     ボタンが出てこなかった（現場から報告。変換中の入力を模した実験で再現を確認）。
+     値の書き換え（大文字化・記号除去）は変換を壊すので、従来どおり確定後だけ行う。 */
+  updOcrSrchBtn();
   if (e && e.isComposing) return;
 
   var el = document.getElementById('opi');
@@ -2956,7 +2963,9 @@ function opiEdit(e) {
   document.getElementById('oph').textContent = '✎ 編集中 — 修正後にマスタ検索してください';
 
   var raw = el.value;
-  var up  = raw.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  /* ★ [v5.0.7] 日本語キーボードで確定すると全角（ＨＦ１２０）になることがある。
+     旧実装は全角を記号扱いで消していたため、確定した瞬間に入力が空になっていた。先に半角へそろえる。 */
+  var up  = toHalfAlnum(raw).toUpperCase().replace(/[^A-Z0-9\-]/g, '');
   if (raw !== up) {
     var pos  = el.selectionStart;
     var diff = raw.length - up.length;
@@ -2964,18 +2973,29 @@ function opiEdit(e) {
       el.value = up;
       var np = Math.max(0, pos - diff);
       el.setSelectionRange(np, np);
-      var has2 = el.value.trim() && el.value.trim() !== '----';
-      document.getElementById('sb-srch').style.display = has2 ? 'flex' : 'none';
+      updOcrSrchBtn();
     }, 0);
   }
 
-  var has = raw.trim() && raw.trim() !== '----';
-  document.getElementById('sb-srch').style.display = has ? 'flex' : 'none';
+  updOcrSrchBtn();
+}
+
+/* ★ [v5.0.7] OCRの図番欄に値があれば「マスタ検索」ボタンを出す（'----' は未読取の表示なので除く） */
+function updOcrSrchBtn() {
+  var v = (document.getElementById('opi').value || '').trim();
+  document.getElementById('sb-srch').style.display = (v && v !== '----') ? 'flex' : 'none';
+}
+
+/* ★ [v5.0.7] 全角の英数字・ハイフンを半角にする（日本語キーボードで図番を打った場合への対策） */
+function toHalfAlnum(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+    .replace(/[－ー―‐]/g, '-');
 }
 
 function opiBlur() {
   var el = document.getElementById('opi');
-  var c  = el.value.trim().toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  var c  = toHalfAlnum(el.value).trim().toUpperCase().replace(/[^A-Z0-9\-]/g, '');   /* ★ [v5.0.7] 全角→半角 */
   if (!c || c === '----') return;
   el.value = c;
 }
