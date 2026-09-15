@@ -14,6 +14,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
   <link rel="manifest" href="./manifest.json">
+  <!-- ★ [v5.0.0] ②P GASへの接続を先に張っておく（OCR等で最初の通信の接続確立を省く） -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
   <title>DX棚卸アプリ</title>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -113,6 +116,13 @@
   .card-scan{background:linear-gradient(145deg,#f4f7fd,#e4ecfc);border-color:var(--blue-mid);}
   .op-row{display:flex;gap:8px;}
   .op-field{flex:1;}
+  /* ★ [v5.0.0] ① 部署は絞り込み用なので狭く、担当者はコード付きで長くなるので広く。
+     場所は2段目に1行で置き、ラベルを左に出して縦の増分を抑える。 */
+  .op-field.dept{flex:2;min-width:0;}
+  .op-field.pers{flex:3;min-width:0;}
+  .op-row.loc{align-items:center;margin-top:8px;}
+  .op-row.loc .fl{margin:0;flex-shrink:0;}
+  .op-row.loc .fi{flex:1 1 0;width:auto;min-width:0;}
   .clr-btn{position:absolute;top:10px;right:12px;font-family:var(--font);
     font-size:11px;font-weight:700;padding:3px 8px;
     border:2px solid var(--orange);border-radius:var(--radius-xs);
@@ -187,6 +197,19 @@
     border-radius:var(--radius-sm);opacity:0;pointer-events:none;
     transition:opacity .08s;z-index:3;}
   /* ★ [v3.3.0] カメラコントロールオーバーレイ（ズーム・ライト） */
+  /* ★ [v5.0.0] ②T OCR解析中の表示。全画面ローディングの代わりに、止めた映像の上へ重ねる */
+  .ocr-busy{display:none;position:absolute;inset:0;z-index:8;
+    background:rgba(10,18,50,.34);align-items:center;justify-content:center;}
+  .ocr-busy.on{display:flex;}
+  .ocr-busy-box{background:rgba(255,255,255,.95);border-radius:14px;padding:9px 16px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;max-width:88%;
+    box-shadow:0 4px 18px rgba(0,0,0,.25);}
+  .ocr-busy-row{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text);}
+  .ocr-busy-spin{width:18px;height:18px;border-radius:50%;flex-shrink:0;
+    border:3px solid var(--blue-lt);border-top-color:var(--purple);animation:sp .8s linear infinite;}
+  .ocr-busy-sec{font-variant-numeric:tabular-nums;}
+  .ocr-busy-note{font-size:12px;color:var(--warn);font-weight:700;text-align:center;}
+  .ocr-busy-note:empty{display:none;}
   #cam-ctrl{position:absolute;bottom:8px;left:0;right:0;z-index:6;
     display:none;flex-direction:column;gap:6px;padding:0 10px;}
   #cam-ctrl.on{display:flex;}
@@ -362,6 +385,16 @@
   .em-hit.ng{background:rgba(192,48,48,.10);color:#c03030;}
   .em-hit.info{background:rgba(224,120,0,.12);color:#c06000;}
   .em-divider{height:1px;background:var(--blue-lt);margin:10px 0 14px;}
+  /* ★ [v5.0.0] ① 修正画面の場所・在庫区分・部署・担当者（2列）。
+     16px未満だとiPhoneが選択時に画面を拡大するため16pxにしている。 */
+  .em-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
+  .em-grid2 .em-field{min-width:0;}
+  .em-sel{width:100%;font-size:16px;font-weight:700;font-family:var(--font);
+    border:2px solid var(--blue-lt);border-radius:8px;padding:9px 8px;
+    background:#fff;color:var(--text);outline:none;-webkit-appearance:none;
+    touch-action:manipulation;text-overflow:ellipsis;}
+  .em-sel:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,107,224,.18);}
+  .em-sel.warn{border-color:var(--warn);background:var(--warn-lt);}
   .em-footer{display:flex;gap:10px;padding:0 16px;margin-top:4px;}
   .em-btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:14px;
     font-weight:700;font-family:var(--font);cursor:pointer;
@@ -417,6 +450,27 @@
   .as-cfg.off{opacity:.45;}
   .as-cfg.off .as-item{color:var(--text-light);}
   .as-item input[type="checkbox"]:disabled{cursor:not-allowed;}
+  /* ★ [v5.0.0] ③ 設定タブの文字を約2倍に（ボタンは約1.5倍）。現場から「字が小さい」との声。
+     ・バージョン欄（.ss-ver）は開発・問い合わせ用で情報量が多いので対象外（田嶋さん判断）。
+     ・#view-settings を付けてIDの詳細度で上書きする。タブレット用 @media の
+       .as-item 等（クラスのみ）より強いので、iPadでも同じ大きさになる。
+     ・ボタンを2倍にすると「マスタデータを今すぐ再読込」がiPhoneで2行に折れるため1.5倍。 */
+  #view-settings .ss:not(.ss-ver) .ss-lbl{font-size:22px;margin-bottom:10px;}
+  #view-settings .ss:not(.ss-ver) .s-lbl{font-size:22px;margin-bottom:8px;}
+  #view-settings .ss:not(.ss-ver) .s-info{font-size:24px;line-height:1.55;}
+  #view-settings .ss:not(.ss-ver) .s-row{padding:14px 14px;}
+  #view-settings .ref-btn,#view-settings .d-btn{font-size:20px;padding:14px 10px;
+    white-space:normal;text-wrap:balance;line-height:1.3;
+    word-break:keep-all;overflow-wrap:anywhere;}   /* 折り返しは <wbr> の位置を優先（語の途中で切らない） */
+  /* ↑ .ref-btn は nowrap のため、幅390pxでも「未送信件数をアイコンに表示する」が18pxはみ出した。
+     入り切らないボタンだけ2行に均等に折り返す（幅375pxの機種も考慮）。 */
+  #view-settings .as-item{font-size:26px;gap:12px;padding:10px 0;}
+  /* 「オンラインに復帰したとき」が末尾1文字だけ折り返すので、2行に均等に割る（iOS 17.5〜） */
+  #view-settings .as-item span{text-wrap:balance;}
+  #view-settings .as-item input[type="checkbox"]{width:34px;height:34px;}
+  #view-settings .as-num{width:88px;font-size:30px;}
+  /* リンクをボタンの見た目で出す（使い方 → 操作説明書・クイックガイド） */
+  .s-link{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;}
   .d-btn{width:100%;padding:12px;background:#fff5f5;color:#c03030;
     border:1.5px solid #f5c0c0;border-radius:10px;font-size:13px;font-weight:700;
     font-family:var(--font);cursor:pointer;-webkit-appearance:none;}
@@ -729,23 +783,31 @@
   <!-- SCAN -->
   <div class="view on" id="view-scan">
     <div class="card card-op">
-      <div class="clabel">場所 ／ 担当者
+      <!-- ★ [v5.0.0] ① 旧「場所」は中身が部署（プルダウンマスタC列）だったので「部署」に改め、
+           棚の場所（A列）を新設。部署は担当者の絞り込み専用で、シートへは出力しない。 -->
+      <div class="clabel">部署・担当者・場所
         <span class="lock-badge" id="lkbg">&#128274; 保持中</span>
       </div>
       <button type="button" class="clr-btn" onclick="clrOp()">クリア</button>
       <div class="op-row">
-        <div class="op-field">
-          <label class="fl" for="ds">場所</label>
+        <div class="op-field dept">
+          <label class="fl" for="ds">部署</label>
           <select class="fi" id="ds" onchange="onDept()">
             <option value="">&#9135; 選択 &#9135;</option>
           </select>
         </div>
-        <div class="op-field">
+        <div class="op-field pers">
           <label class="fl" for="ps">担当者</label>
           <select class="fi" id="ps" onchange="onPers()">
             <option value="">&#9135; 選択 &#9135;</option>
           </select>
         </div>
+      </div>
+      <div class="op-row loc">
+        <label class="fl" for="ls">場所</label>
+        <select class="fi" id="ls" onchange="onLoc()">
+          <option value="">&#9135; 選択 &#9135;</option>
+        </select>
       </div>
     </div>
 
@@ -766,6 +828,13 @@
           <div id="sline"></div>
         </div>
         <div id="ocrg"></div>
+        <!-- ★ [v5.0.0] ②T OCR解析中。撮った瞬間の映像を止め、その上に経過秒数を出す -->
+        <div class="ocr-busy" id="ocrBusy">
+          <div class="ocr-busy-box">
+            <div class="ocr-busy-row"><span class="ocr-busy-spin"></span>図番を解析中… <span class="ocr-busy-sec" id="ocrBusySec">0.0</span>秒</div>
+            <div class="ocr-busy-note" id="ocrBusyNote"></div>
+          </div>
+        </div>
         <div id="flash"></div>
         <!-- ★ [v3.3.0] バッテリー節約インジケーター -->
         <div class="bat-badge" id="bat-badge">🔋 省電力中</div>
@@ -850,7 +919,7 @@
       <div class="s-card">
         <div class="s-row">
           <button type="button" class="ref-btn" style="width:100%" onclick="reloadMaster()">
-            &#128260; マスタデータを今すぐ再読込
+            &#128260; マスタデータを<wbr>今すぐ再読込
           </button>
         </div>
         <!-- ★ [v3.7.0] オフラインキャッシュ状態の確認 -->
@@ -897,7 +966,7 @@
           <div class="s-lbl">ホーム画面アイコンのバッジ</div>
           <div class="s-info" id="badgeStatus" style="margin-bottom:8px;">確認中…</div>
           <button type="button" class="ref-btn" style="width:100%;background:linear-gradient(135deg,var(--purple),#5a1fd1);" onclick="enableAppBadge()">
-            &#128276; 未送信件数をアイコンに表示する
+            &#128276; 未送信件数を<wbr>アイコンに表示する
           </button>
         </div>
       </div>
@@ -909,69 +978,38 @@
         <div class="s-row"><button type="button" class="d-btn" onclick="clrAll()">&#128465; 全履歴を削除</button></div>
       </div>
     </div>
+    <!-- ★ [v5.0.0] ③ 「使い方」は操作説明書・クイックガイドへのリンクに差し替え（田嶋さん判断）。
+         旧本文は GitHub Pages への配置手順など開発者向けの内容が中心だった。
+         ※ アプリと同じ場所に置いたページなので、ホーム画面のアプリから開くとアプリの画面の
+           中に表示されることがある（iOSの仕様）。戻り方の案内を standalone 時だけ出す。 -->
     <div class="ss">
       <div class="ss-lbl">使い方</div>
       <div class="s-card">
         <div class="s-row">
-          <div class="s-info">
-            <b>① GitHub Pages に index.html を配置</b><br>
-            　HTTPSのためカメラが使用可能になります<br><br>
-            <b>② 起動時に自動でマスタデータを取得</b><br>
-            　GASへの接続はコード内に設定済みです<br><br>
-            <b>③ スキャンタブでQRまたはOCRで読取</b><br>
-            　QR/バーコード: 図番・製番は変更不可（マスタヒット時は品名も変更不可）<br>
-            　QR/バーコード: マスタ未登録時は品名のみ手入力可（<b>品名は任意</b>）<br>
-            　OCR: 読取後も図番・品名・製番を手修正可<br>
-            　カメラ不使用時は直接入力も可能<br><br>
-            <b>④ 場所・担当者・在庫区分を選択</b><br>
-            　選択値は次回起動時に自動復元されます<br><br>
-            <b>⑤ 読取後に自動で登録ポップアップが開きます</b><br>
-            　数量を直接入力 → 登録ボタンで保存（オフライン対応）<br>
-            　Enterキーでも登録可能。リセットで次スキャンへ<br>
-            　<b>マスタ未登録の図番は品名が空でも登録できます</b>（v4.5.0〜）<br>
-            　　品名を入れる場合は<b>全角</b>で（半角だと警告が出ます）<br>
-            　<b>Ｈ型鋼・Ｃ型鋼・角パイプ等は「長さ(mm)」欄が自動で出ます</b><br>
-            　（品名の先頭で判定。対象外の部材では表示されません）<br>
-            　<b>長さ欄が出た場合、長さの入力は必須です</b>（未入力だと登録できません）<br><br>
-            <b>⑥ 履歴タブで一括送信</b><br>
-            　GAS → スプレッドシート → ASTERIA → IBM i<br>
-            　送信エラーの分は未送信のまま残り、再送可能<br>
-            　<b>同じ図番でも読み取るたびに別行として追加されます</b><br>
-            　数量を直したいときは履歴タブで該当行をタップして修正<br>
-            　マスタに品名が無くK/Pで始まる図番は「特注」表示になり、<br>
-            　スプレッドシートの「棚卸データ(特注品)」へ送られます<br>
-            　<b>未送信のままアプリを閉じると、次回起動時にお知らせします</b><br>
-            　<b>ホーム画面に追加すると、アイコンに未送信件数を出せます</b><br>
-            　（設定タブの「未送信件数をアイコンに表示する」を一度押してください）<br>
-            　<b>自動送信は既定でOFFです</b>。使う場合は設定タブでONにしてください<br>
-            　ONにすると、送信のきっかけ（件数・分ごと・オンライン復帰・<br>
-            　アプリ復帰）を<b>個別にON/OFFでき、件数と分も直接入力できます</b><br><br>
-            <b>⑦ 読みにくい時はズーム・ライトを活用</b><br>
-            　ズームはスキャン画像そのものを拡大します（v3.6.0〜）<br>
-            　「×1.5(D)」表示はデジタルズーム＝画質は粗くなります<br><br>
-            <b>⑧ オフライン対応・高速起動（v3.7.0〜/v3.8.0〜）</b><br>
-            　マスタは端末内(IndexedDB)に保存され、2回目以降の起動は<br>
-            　保存済みデータを使うため通信せず即座に立ち上がります<br>
-            　（24時間経過後は自動で取り直します）<br>
-            　<b>マスタを更新した直後は「再読込」を押してください</b><br>
-            　保存状態は「キャッシュ状態を確認」で検証できます<br><br>
-            <b>⑨ QRは枠の中だけを読み取ります（v4.0.0〜）</b><br>
-            　製造指示書のようにQRが並ぶ紙面で隣のQRを拾わないよう、<br>
-            　画面中央の枠の内側だけをデコードします<br>
-            　<b>v4.7.0で読取枠をさらに絞りました</b>（面積比 iPhone約2/3・iPad約1/2）<br>
-            　バーコードは横長のため従来どおり画面全体で読み取ります
-          </div>
+          <a class="ref-btn s-link" href="https://itajima-kz.github.io/inventory-qr3/manual.html"
+             target="_blank" rel="noopener">&#128214; 操作説明書を開く</a>
+        </div>
+        <div class="s-row">
+          <a class="ref-btn s-link" href="https://itajima-kz.github.io/inventory-qr3/quickref.pdf"
+             target="_blank" rel="noopener"
+             style="background:linear-gradient(135deg,#0f9e6e,#0b7a54);">&#128196; クイックガイド<wbr>（PDF）を開く</a>
+        </div>
+        <div class="s-row" id="docHintRow" style="display:none">
+          <div class="s-info">アプリの画面の中で開いたときは、<b>画面の左端から右へスワイプ</b>すると戻れます。</div>
         </div>
       </div>
     </div>
-    <div class="ss" style="padding-bottom:20px">
+    <div class="ss ss-ver" style="padding-bottom:20px">
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v4.9.1<br>
+        <div class="s-info">DX棚卸アプリ v5.0.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v4.9.1: 自動送信の既定をOFFに変更。OFFのあいだは個別設定を操作できないようにしました</span><br>
+          <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.0: 「場所」を「部署」に改め、棚の「場所」を新設（必須）。担当者コードを表示・保存。修正画面で場所・担当者・在庫区分も変更可。OCRの待ち時間対策（事前接続・遅い時の再送・解析中表示）。設定タブの文字を拡大し、使い方を操作説明書へのリンクに変更</span><br>
+          <span style="color:#e07800;font-weight:700;">※ v5.0.0はGASの更新と、スプレッドシートの列移行（migrateLayoutV5）が必要です</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v4.9.1: 自動送信の既定をOFFに変更。OFFのあいだは個別設定を操作できないようにしました</span><br>
           <span style="color:#6b7a99;font-weight:500;">v4.9.0: 自動送信の条件を設定タブで個別にON/OFF可能に。件数と分も直接入力できます<br>
           <span style="color:#6b7a99;font-weight:500;">v4.8.0: iPadのカメラ表示の高さを約2/3に縮小（「カメラを停止」ボタンの見切れを解消）<br>
           <span style="color:#6b7a99;font-weight:500;">v4.7.0: QR読取枠を縮小（面積比 iPhone約2/3・iPad/PC約1/2）— 隣のQRをさらに拾いにくく<br>
@@ -1032,7 +1070,7 @@
       </div>
     </div>
     <div class="reg-modal-body">
-      <!-- ② 場所・担当者（値のみ・幅を二分） -->
+      <!-- ② 場所・担当者（値のみ・幅を二分）★ [v5.0.0] 部署は出力しないので出さない -->
       <div class="reg-op-row" id="regOpRow"></div>
       <!-- 未登録バナー（未登録時のみ表示） -->
       <div class="reg-unreg-note" id="regUnregNote" style="display:none">
@@ -1174,10 +1212,24 @@
           placeholder="0" autocomplete="off"
           oninput="updEmSaveBtn()">
       </div>
-      <!-- メタ情報（読取専用） -->
-      <div class="em-field">
-        <div class="em-label">場所 / 担当者 / 区分</div>
-        <div class="em-val" id="emMeta" style="font-size:12px;"></div>
+      <!-- ★ [v5.0.0] ① 場所・在庫区分・部署・担当者も直せるようにした（旧: 表示のみ） -->
+      <div class="em-grid2">
+        <div class="em-field">
+          <div class="em-label">場所</div>
+          <select class="em-sel" id="emLocSel" onchange="updEmSaveBtn()"></select>
+        </div>
+        <div class="em-field">
+          <div class="em-label">在庫区分</div>
+          <select class="em-sel" id="emItsSel" onchange="updEmSaveBtn()"></select>
+        </div>
+        <div class="em-field">
+          <div class="em-label">部署</div>
+          <select class="em-sel" id="emDeptSel" onchange="onEmDeptChange()"></select>
+        </div>
+        <div class="em-field">
+          <div class="em-label">担当者</div>
+          <select class="em-sel" id="emPersSel" onchange="updEmSaveBtn()"></select>
+        </div>
       </div>
     </div>
     <div class="em-footer">
@@ -1208,6 +1260,16 @@ var SCAN_ASPECT_OCR = 2.8;
 var SCAN_ASPECT_QR  = 1.333;
 
 var OCR_MAX_PX = 800;
+/* ★ [v5.0.0] ②P/Q OCRの待ち時間対策。
+   実測（本番GAS・2026/09/15）: Vision API自体は約0.2秒で、残りはGASの往復。
+   GASは何もしない要求でも時々3〜8秒かかり、回ごとにばらつく。
+   - OCR_HEDGE_MS   : この時間を過ぎても返らなければ同じ要求をもう1本送り、先に返った方を使う
+   - GAS_WARM_GAP_MS: 事前接続（ping）を送る最短間隔
+   - OCR所要時間は直近 OCR_STATS_MAX 回を端末に残し、設定タブのバージョン欄に出す */
+var OCR_HEDGE_MS     = 4000;
+var GAS_WARM_GAP_MS  = 45 * 1000;
+var LS_OCR_STATS_KEY = 'dx_inv_ocr_stats';
+var OCR_STATS_MAX    = 30;
 
 /* ★ [v4.0.0→v4.7.0] ⑤ QR読取ROI。表示エリアの短辺に対する「一辺の」比率。
    小さくするほど狙いを絞れるが、枠に収める操作は難しくなる。
@@ -1254,7 +1316,7 @@ var LENGTH_TARGET_PREFIXES = [
 var CUSTOM_CODE_RE = /^[KP]/;
 
 var masterData   = [];
-var dropData     = { departments:[], inventoryTypes:[] };
+var dropData     = { locations:[], departments:[], inventoryTypes:[] };   /* ★ [v5.0.0] ① locations=場所(A列) */
 var persMap      = {};
 var tailZeroSet  = new Set();   /* ★ [Bug-9] 末尾0リスト */
 
@@ -1631,9 +1693,14 @@ function gasGet(action, params) {
   });
 }
 
-function gasPost(body) {
+function gasPost(body, extSignal) {
   return new Promise(function(resolve, reject) {
     var ctrl = new AbortController();
+    /* ★ [v5.0.0] ②Q 外から中断できるようにする（二重送信で負けた方を止めるため） */
+    if (extSignal) {
+      if (extSignal.aborted) ctrl.abort();
+      else extSignal.addEventListener('abort', function() { ctrl.abort(); });
+    }
     var timer = setTimeout(function() {
       ctrl.abort();
       reject(new Error('タイムアウト（60秒）'));
@@ -1650,6 +1717,86 @@ function gasPost(body) {
       .then(resolve)
       .catch(function(e) { clearTimeout(timer); reject(e); });
   });
+}
+
+/* ============================================================
+   ★ [v5.0.0] ②P GASへの事前接続
+   OCRモードに入った時・カメラ起動時に、何もしない ping を1本送っておく。
+   iPhoneは待機中に接続を閉じるため、撮影直後の1本目で接続し直す時間
+   （実測で中央値+0.15秒、悪いと+2.5秒）がOCRの待ち時間に上乗せされていた。
+   ============================================================ */
+var _lastGasWarm = 0;
+function warmGas() {
+  if (!isOnline()) return;
+  var now = Date.now();
+  if (now - _lastGasWarm < GAS_WARM_GAP_MS) return;
+  _lastGasWarm = now;
+  gasGet('ping').catch(function() {});   /* 失敗しても何もしない（本番の要求は別に送る） */
+}
+
+/* ============================================================
+   ★ [v5.0.0] ②Q 遅いときだけもう1本送る
+   hedgeMs を過ぎても返らなければ同じ要求をもう1本送り、先に返った方を採用する。
+   - 読み取り専用の要求（ocrSearch）にだけ使うこと。書き込み系に使うと二重登録になる。
+   - 1本目が早く失敗した場合は、待たずに2本目を送る（1回だけのリトライを兼ねる）。
+   - 勝った方が決まったら、もう一方は中断する（GAS側の処理は止まらないが、待たない）。
+   resolve: { res, hedged }   reject: 2本とも失敗したとき
+   ============================================================ */
+function gasPostHedged(body, hedgeMs, onHedge) {
+  return new Promise(function(resolve, reject) {
+    var settled = false, launched = 0, failed = 0, timer = null;
+    var ctrls = [];
+
+    function launch() {
+      if (settled || launched >= 2) return;
+      launched++;
+      if (launched === 2 && onHedge) { try { onHedge(); } catch(e) {} }
+      var c = new AbortController();
+      ctrls.push(c);
+      gasPost(body, c.signal).then(function(res) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        ctrls.forEach(function(x) { if (x !== c) { try { x.abort(); } catch(e) {} } });
+        resolve({ res: res, hedged: launched > 1 });
+      }, function(err) {
+        if (settled) return;
+        failed++;
+        if (launched < 2) { clearTimeout(timer); launch(); return; }
+        if (failed >= launched) { settled = true; clearTimeout(timer); reject(err); }
+      });
+    }
+
+    launch();
+    timer = setTimeout(launch, hedgeMs);
+  });
+}
+
+/* ★ [v5.0.0] ②P/Q の効果を現場の端末で確かめるため、OCRの所要時間を直近30回だけ残す。
+   設定タブのバージョン欄に中央値・最大・再送回数を出す（R/S を判断する材料）。 */
+function recordOcrStat(ms, hedged, ok) {
+  try {
+    var arr = JSON.parse(localStorage.getItem(LS_OCR_STATS_KEY) || '[]');
+    if (!Array.isArray(arr)) arr = [];
+    arr.push({ ms: Math.round(ms), h: hedged ? 1 : 0, ok: ok ? 1 : 0, at: Date.now() });
+    while (arr.length > OCR_STATS_MAX) arr.shift();
+    localStorage.setItem(LS_OCR_STATS_KEY, JSON.stringify(arr));
+  } catch(e) {}
+}
+
+function updOcrStatsUI() {
+  var el = document.getElementById('ocrStats');
+  if (!el) return;
+  var arr = [];
+  try { arr = JSON.parse(localStorage.getItem(LS_OCR_STATS_KEY) || '[]'); } catch(e) {}
+  if (!Array.isArray(arr) || !arr.length) { el.textContent = 'OCR所要時間: まだ記録がありません'; return; }
+  var ms = arr.map(function(x) { return x.ms || 0; }).sort(function(a, b) { return a - b; });
+  var n = ms.length;
+  var med = (ms[(n - 1) >> 1] + ms[n >> 1]) / 2;
+  var hedgedCnt = arr.filter(function(x) { return x.h; }).length;
+  var failCnt   = arr.filter(function(x) { return !x.ok; }).length;
+  el.textContent = 'OCR所要時間（直近' + n + '回）: 中央値 ' + (med / 1000).toFixed(1)
+    + '秒 / 最大 ' + (ms[n - 1] / 1000).toFixed(1) + '秒 / 再送 ' + hedgedCnt + '回 / 失敗 ' + failCnt + '回';
 }
 
 /* ============================================================
@@ -1784,7 +1931,9 @@ async function loadAllMaster(isReload) {
     var cached = await loadMasterFromCache();
     if (cached && cached.master) {
       var ageMs  = cached.ts ? (Date.now() - cached.ts) : Infinity;
-      var isFresh = ageMs < CACHE_TTL_MS;
+      /* ★ [v5.0.0] ① 担当者コードを持たない旧形式の保存データは、24時間以内でも
+         オンラインなら取り直す（更新直後に担当者コードが出ない状態を1日引きずらない）。 */
+      var isFresh = ageMs < CACHE_TTL_MS && isPersMapV2(cached.persMap_);
       if (isFresh || !isOnline()) {
         applyMasterData(cached.dropData, cached.master, cached.persMap_, cached.tailZero);
         _loadingMaster = false;
@@ -1819,7 +1968,7 @@ async function loadAllMaster(isReload) {
     var results = await Promise.all([
       gasWithRetry(function(){ return gasGet('getDropdowns',    forceParam); }),
       gasWithRetry(function(){ return gasGet('getMasterList',   forceParam); }),
-      gasWithRetry(function(){ return gasGet('getAllPersonnel', forceParam); }),
+      gasWithRetry(function(){ return getAllPersonnelCompat(forceParam); }),   /* ★ [v5.0.0] ① */
       gasWithRetry(function(){ return gasGet('getTailZeroList', forceParam); })
     ]);
 
@@ -1862,9 +2011,11 @@ async function loadAllMaster(isReload) {
 
 /* ★ [v3.2.0] マスタデータ適用（キャッシュ・GAS両方から使う） */
 function applyMasterData(dd, master, allPers, tailZero) {
-  dropData    = dd || { departments:[], inventoryTypes:[] };
+  dropData    = dd || { locations:[], departments:[], inventoryTypes:[] };
+  /* ★ [v5.0.0] ① 旧GAS・旧キャッシュには locations が無い。departments も同じA列なので代わりに使う */
+  if (!Array.isArray(dropData.locations)) dropData.locations = dropData.departments || [];
   masterData  = Array.isArray(master) ? master : [];
-  persMap     = (allPers && typeof allPers === 'object') ? allPers : {};
+  persMap     = normalizePersMap(allPers);   /* ★ [v5.0.0] ① { 部署: [{name, code}] } にそろえる */
   tailZeroSet = new Set(
     (Array.isArray(tailZero) ? tailZero : [])
       .map(function(c) { return String(c).toUpperCase().replace(/-/g, ''); })
@@ -1878,6 +2029,15 @@ function applyMasterData(dd, master, allPers, tailZero) {
   var stocks = (dropData.inventoryTypes || []);
   fillSel('ds',  depts);
   fillSel('its', stocks);
+  fillSel('ls',  dropData.locations);   /* ★ [v5.0.0] ① 場所 */
+}
+
+/* ★ [v5.0.0] ① 担当者（氏名＋コード）を取得。GASが旧版（v4.x）のままなら
+   getAllPersonnelV2 が「不明なアクション」を返すので、氏名だけの旧APIに切り替える。 */
+async function getAllPersonnelCompat(params) {
+  var res = await gasGet('getAllPersonnelV2', params);
+  if (res && res.success === false) res = await gasGet('getAllPersonnel', params);
+  return res;
 }
 
 async function reloadMaster() {
@@ -1886,21 +2046,84 @@ async function reloadMaster() {
 }
 
 /* ============================================================
-   場所・担当者
+   部署・担当者・場所（★ [v5.0.0] ① 旧「場所」は部署に改称、棚の場所を新設）
    ============================================================ */
-var svDept = '', svPers = '';
+var svDept = '', svPers = '', svLoc = '';
+
+/* ★ [v5.0.0] ① 担当者マップを { 部署: [{name, code}] } にそろえる。
+   旧GAS・旧キャッシュは氏名の文字列配列なので code:'' として読み替える。 */
+function normalizePersMap(pm) {
+  var out = {};
+  if (!pm || typeof pm !== 'object' || pm.success === false) return out;
+  Object.keys(pm).forEach(function(dept) {
+    var arr = pm[dept];
+    if (!Array.isArray(arr)) return;
+    out[dept] = arr.map(function(p) {
+      if (p && typeof p === 'object') return { name: String(p.name || ''), code: String(p.code || '') };
+      return { name: String(p || ''), code: '' };
+    }).filter(function(p) { return p.name; });
+  });
+  return out;
+}
+
+/* 保存済みの担当者マップが新形式（{name, code}）か。空なら判定できないので新形式扱い
+   （取り直しを毎回繰り返さないため）。 */
+function isPersMapV2(pm) {
+  if (!pm || typeof pm !== 'object') return false;
+  var keys = Object.keys(pm);
+  for (var i = 0; i < keys.length; i++) {
+    var arr = pm[keys[i]];
+    if (Array.isArray(arr) && arr.length) return typeof arr[0] === 'object';
+  }
+  return true;
+}
+
+/* 担当者をプルダウンの値で表す。コードがあればコード、無ければ氏名。
+   GAS側の personKeyOf() と同じ規則（シートの行を見分けるキーにも使われる）。 */
+function personKey(p)   { return p ? (p.code || p.name) : ''; }
+function personLabel(p) { return p.code ? (p.name + '（' + p.code + '）') : p.name; }
+function findPerson(dept, key) {
+  var arr = persMap[dept] || [];
+  for (var i = 0; i < arr.length; i++) {
+    if (personKey(arr[i]) === key) return arr[i];
+  }
+  return null;
+}
+
+/* 担当者プルダウンを部署で絞って作る。cur（{name, code}）を渡すとそれを選ぶ。
+   コードの無い旧データは氏名で探し、マスタから消えた人は選択肢に残して黙って失わない。 */
+function fillPersSel(sel, dept, cur) {
+  if (!sel) return;
+  sel.innerHTML = '';
+  var o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = '⎯ 選択 ⎯';
+  sel.appendChild(o0);
+  var arr = persMap[dept] || [];
+  for (var i = 0; i < arr.length; i++) {
+    var o = document.createElement('option');
+    o.value = personKey(arr[i]); o.textContent = personLabel(arr[i]);
+    sel.appendChild(o);
+  }
+  if (!cur || !cur.name) return;
+  var hit = findPerson(dept, personKey(cur));
+  if (!hit && !cur.code) {
+    for (var j = 0; j < arr.length; j++) { if (arr[j].name === cur.name) { hit = arr[j]; break; } }
+  }
+  if (!hit) {
+    var ox = document.createElement('option');
+    ox.value = personKey(cur); ox.textContent = personLabel(cur);
+    sel.appendChild(ox);
+    sel.value = personKey(cur);
+  } else {
+    sel.value = personKey(hit);
+  }
+}
 
 function onDept() {
   svDept = document.getElementById('ds').value;
   svPers = '';
   try { sessionStorage.setItem('inv_dept', svDept); sessionStorage.removeItem('inv_pers'); } catch(e2){}
-  var ps = document.getElementById('ps');
-  ps.innerHTML = '<option value="">&#9135; 選択 &#9135;</option>';
-  var persons = persMap[svDept] || [];
-  for (var i = 0; i < persons.length; i++) {
-    var o = document.createElement('option');
-    o.value = persons[i]; o.textContent = persons[i]; ps.appendChild(o);
-  }
+  fillPersSel(document.getElementById('ps'), svDept, null);
   updLock(); updReg();
 }
 
@@ -1908,6 +2131,18 @@ function onPers() {
   svPers = document.getElementById('ps').value;
   try { sessionStorage.setItem('inv_pers', svPers); } catch(e2){}
   updLock(); updReg();
+}
+
+/* ★ [v5.0.0] ① 場所（棚のある場所）。部署とは連動しない独立した選択 */
+function onLoc() {
+  svLoc = document.getElementById('ls').value;
+  try { sessionStorage.setItem('inv_loc', svLoc); } catch(e2){}
+  updLock(); updReg();
+}
+
+/* ★ [v5.0.0] ① いま選ばれている担当者 { name, code }。未選択なら null */
+function curPerson() {
+  return findPerson(document.getElementById('ds').value, document.getElementById('ps').value);
 }
 
 /* ★ [v2.4.0] 在庫区分も sessionStorage 永続化 */
@@ -1934,6 +2169,7 @@ function restoreOp() {
     var d   = sessionStorage.getItem('inv_dept')  || '';
     var p   = sessionStorage.getItem('inv_pers')  || '';
     var inv = sessionStorage.getItem('inv_itype') || '';
+    var l   = sessionStorage.getItem('inv_loc')   || '';   /* ★ [v5.0.0] ① */
 
     if (d) {
       svDept = d;
@@ -1945,16 +2181,31 @@ function restoreOp() {
           if (p) {
             var ps = document.getElementById('ps');
             if (ps) {
-              ps.value = p;
-              if (ps.value === p) {
-                svPers = p;
+              /* ★ [v5.0.0] ① v4.x までは氏名を保存していた。値がコードに変わったので、
+                 一致しなければ氏名で探し直す（更新直後に担当者が外れないように）。 */
+              var pk = p;
+              if (!findPerson(d, pk)) {
+                var arrP = persMap[d] || [];
+                for (var ip = 0; ip < arrP.length; ip++) {
+                  if (arrP[ip].name === p) { pk = personKey(arrP[ip]); break; }
+                }
+              }
+              ps.value = pk;
+              if (ps.value === pk) {
+                svPers = pk;
                 /* ★ 修正: 復元した担当者を sessionStorage に書き戻す */
-                try { sessionStorage.setItem('inv_pers', p); } catch(e3){}
+                try { sessionStorage.setItem('inv_pers', pk); } catch(e3){}
               }
             }
           }
         }
       }
+    }
+
+    /* ★ [v5.0.0] ① 場所の復元 */
+    if (l) {
+      var ls = document.getElementById('ls');
+      if (ls) { ls.value = l; if (ls.value === l) svLoc = l; }
     }
 
     /* ★ [v2.4.0] 在庫区分の復元 */
@@ -1971,19 +2222,22 @@ function restoreOp() {
 }
 
 function clrOp() {
-  svDept = ''; svPers = '';
+  svDept = ''; svPers = ''; svLoc = '';
   document.getElementById('ds').value = '';
   document.getElementById('ps').innerHTML = '<option value="">&#9135; 選択 &#9135;</option>';
+  document.getElementById('ls').value = '';
   try {
     sessionStorage.removeItem('inv_dept');
     sessionStorage.removeItem('inv_pers');
+    sessionStorage.removeItem('inv_loc');
   } catch(e2){}
   updLock(); updReg();
-  toast('場所・担当者をクリアしました', 'ok');
+  toast('部署・担当者・場所をクリアしました', 'ok');
 }
 
 function updLock() {
-  var v = document.getElementById('ds').value || document.getElementById('ps').value;
+  var v = document.getElementById('ds').value || document.getElementById('ps').value
+       || document.getElementById('ls').value;
   document.getElementById('lkbg').style.display = v ? 'inline-flex' : 'none';
 }
 
@@ -1991,6 +2245,7 @@ function updLock() {
    モード切替（バーコード / QR / OCR）
    ============================================================ */
 function setMode(m) {
+  cancelOcr();   /* ★ [v5.0.0] ②T 解析中にモードを変えたら、その結果は捨てる */
   mode = m;
   document.getElementById('mjan').className = 'mbtn' + (m === 'jan' ? ' on jan' : '');
   document.getElementById('mqr').className  = 'mbtn' + (m === 'qr'  ? ' on qr'  : '');
@@ -2022,6 +2277,7 @@ function setMode(m) {
     if (m === 'qr')  qrTimer  = setInterval(scanQR,  interval);
     if (m === 'jan') janTimer = setInterval(scanJAN, interval);
   }
+  if (m === 'ocr') warmGas();   /* ★ [v5.0.0] ②P OCRを使う前にGASへの接続を張っておく */
 }
 
 /* ============================================================
@@ -2150,6 +2406,7 @@ async function startCam() {
     document.getElementById('sb-stop').style.display  = 'flex';
     if (mode === 'ocr') document.getElementById('sb-cap').style.display = 'flex';
     camOn = true;
+    if (mode === 'ocr') warmGas();   /* ★ [v5.0.0] ②P */
     updGuide();
     updManSrch();
 
@@ -2219,6 +2476,7 @@ async function startCam() {
 }
 
 function stopCam() {
+  cancelOcr();   /* ★ [v5.0.0] ②T 解析中に止めたら、その結果は捨てる（タブ移動も stopCam を通る） */
   clearInterval(qrTimer);  qrTimer  = null;
   clearInterval(janTimer); janTimer = null;
   /* ★ [v3.3.0] ライトをOFF */
@@ -2485,26 +2743,41 @@ function scanJAN() {
 /* ============================================================
    OCRキャプチャ
    ============================================================ */
+/* ============================================================
+   ★ [v5.0.0] ②Q/T OCR（旧: 全画面ローディングのまま最大60秒待つだけ）
+   - Q: gasPostHedged で「4秒返らなければ同じ要求をもう1本」。GASの揺らぎで待たされる時間を短くする。
+   - T: 全画面ローディングをやめ、撮った瞬間の映像を止めたまま「解析中 n.n秒」を重ねる。
+   - 解析中もカメラ停止・モード切替・タブ移動ができるようになったので、途中で取り消されたら
+     結果を捨てる（_ocrSeq で判定。cancelOcr() が番号を進める）。
+   ============================================================ */
+var _ocrSeq  = 0;
+var _ocrTick = null;
+
 async function doOCR() {
   if (ocrBusy) return;
-  ocrBusy = true;
-  document.getElementById('ocrg').classList.add('scanning');
   var b64 = capFrame();
   if (!b64) {
-    ocrBusy = false;
-    document.getElementById('ocrg').classList.remove('scanning');
     toast('映像取得できません', 'err');
     return;
   }
-  showLoad('OCR解析中…');
+  ocrBusy = true;
+  var seq    = ++_ocrSeq;
+  var t0     = Date.now();
+  var hedged = false;
+  document.getElementById('ocrg').classList.add('scanning');
+  showOcrBusy(t0);
   try {
-    var res = await gasPost({ action: 'ocrSearch', image: b64 });
-    hideLoad();
+    var out = await gasPostHedged({ action: 'ocrSearch', image: b64 }, OCR_HEDGE_MS, function() {
+      hedged = true;
+      if (seq === _ocrSeq) setOcrBusyNote('通信が混み合っています。もう一度送っています…');
+    });
+    if (seq !== _ocrSeq) return;   /* 解析中に取り消された */
+    var res = out.res || {};
+    recordOcrStat(Date.now() - t0, out.hedged, !res.error);
+    endOcrBusy(false);             /* この後カメラを止めるので映像は再開しない */
     stopCam();
-    document.getElementById('ocrg').classList.remove('scanning');
     if (res.error) {
       toast('OCRエラー: ' + res.error, 'err');
-      ocrBusy = false;
       return;
     }
     var rawT = (res.rawText || '').trim();
@@ -2515,7 +2788,6 @@ async function doOCR() {
                  || rawT.indexOf('KEY未設定') >= 0;
     if (isErrText) {
       toast('OCRエラー: ' + rawT, 'err');
-      ocrBusy = false;
       return;
     }
     var box = document.getElementById('obox');
@@ -2537,11 +2809,47 @@ async function doOCR() {
       toast('図番が読み取れません。明るい場所で再試行してください', 'err');
     }
   } catch(e) {
-    hideLoad();
-    document.getElementById('ocrg').classList.remove('scanning');
+    if (seq !== _ocrSeq) return;
+    recordOcrStat(Date.now() - t0, hedged, false);
+    endOcrBusy(true);              /* カメラは動かしたまま → 映像を再開して撮り直せるように */
     toast('OCRエラー: ' + e.message, 'err');
   }
+}
+
+/* ★ [v5.0.0] ②T 解析中表示の出し入れ */
+function showOcrBusy(t0) {
+  var v = document.getElementById('cv');
+  try { v.pause(); } catch(e) {}           /* 撮った瞬間の映像で止める */
+  setOcrBusyNote('');
+  var sec = document.getElementById('ocrBusySec');
+  if (sec) sec.textContent = '0.0';
+  clearInterval(_ocrTick);
+  _ocrTick = setInterval(function() {
+    if (sec) sec.textContent = ((Date.now() - t0) / 1000).toFixed(1);
+  }, 100);
+  document.getElementById('ocrBusy').classList.add('on');
+}
+
+function setOcrBusyNote(t) {
+  var n = document.getElementById('ocrBusyNote');
+  if (n) n.textContent = t || '';
+}
+
+function endOcrBusy(resume) {
   ocrBusy = false;
+  clearInterval(_ocrTick); _ocrTick = null;
+  document.getElementById('ocrBusy').classList.remove('on');
+  document.getElementById('ocrg').classList.remove('scanning');
+  if (resume && camOn) {
+    var v = document.getElementById('cv');
+    if (v && v.paused) { var pp = v.play(); if (pp && pp.catch) pp.catch(function() {}); }
+  }
+}
+
+function cancelOcr() {
+  if (!ocrBusy) return;
+  _ocrSeq++;
+  endOcrBusy(true);
 }
 
 function capFrame() {
@@ -2814,16 +3122,18 @@ function openRegModal(isHit) {
   var hitFlag = (isHit === true);
   var zuno   = document.getElementById('zuno').value.trim();
   var hinmei = document.getElementById('hinmei').value.trim();
-  var dept   = document.getElementById('ds').value;
-  var pers   = document.getElementById('ps').value;
+  var locV   = document.getElementById('ls').value;
+  var persP  = curPerson();
 
-  /* --- 場所・担当者バッジ --- */
+  /* --- 場所・担当者バッジ ---
+     ★ [v5.0.0] ① シートへ出力する「場所」「担当者名」を出す（部署は絞り込み用なので出さない）。
+     コードは省いてバッジを1行に収め、モーダルの高さを変えない。未選択は何が足りないかを出す。 */
   var opRow = document.getElementById('regOpRow');
   opRow.innerHTML = '';
-  [dept, pers].forEach(function(v) {
+  [[locV, '場所未選択'], [persP ? persP.name : '', '担当者未選択']].forEach(function(pair) {
     var sp = document.createElement('span');
-    sp.className = 'reg-op-badge' + (v ? '' : ' empty');
-    sp.textContent = v || '未選択';
+    sp.className = 'reg-op-badge' + (pair[0] ? '' : ' empty');
+    sp.textContent = pair[0] || pair[1];
     opRow.appendChild(sp);
   });
 
@@ -3088,6 +3398,7 @@ function updReg() {
   var z = document.getElementById('zuno').value.trim();
   var d = document.getElementById('ds').value;
   var p = document.getElementById('ps').value;
+  var l = document.getElementById('ls').value;   /* ★ [v5.0.0] ① 場所は必須（田嶋さん判断） */
   var h = document.getElementById('hinmei').value.trim();
   /* 在庫区分: モーダルが開いていればregItsSelect、そうでなければ非表示its */
   var regIts = document.getElementById('regItsSelect');
@@ -3103,9 +3414,9 @@ function updReg() {
        （通常品でマスタ未登録の場合も同じ扱い＝一律で任意。田嶋さん判断）。
        全角チェックは syncRegHinmei() の警告表示のみで、登録は止めない。 */
     var mz = (document.getElementById('regZunoInput').value || '').trim();
-    ok = !!(mz && d && p && t);
+    ok = !!(mz && d && p && l && t);
   } else {
-    ok = !!(z && d && p && t);
+    ok = !!(z && d && p && l && t);
   }
   /* ★ [v4.0.0] ③ 長さ欄が出ている＝対象部材。長さは必須。
      未入力・0のままでは登録ボタンを押せなくする（regData() でも同判定で止める）。 */
@@ -3143,6 +3454,21 @@ async function regData() {
       if (lenInpEl) { lenInpEl.focus(); lenInpEl.select(); }
       return;
     }
+  }
+
+  /* ★ [v5.0.0] ① 数量欄のEnterからは登録ボタンの disabled を経由しないため、
+     場所・担当者・在庫区分などが欠けていてもここで止める（長さと同じ理由）。
+     旧版はここを見ておらず、Enterなら部署・担当者が空のまま登録できてしまっていた。 */
+  updReg();
+  var regBtnChk = document.getElementById('regModalBtn');
+  if (regBtnChk && regBtnChk.disabled) {
+    var miss = [];
+    if (!document.getElementById('ls').value) miss.push('場所');
+    if (!curPerson()) miss.push('担当者');
+    var regItsChk = document.getElementById('regItsSelect');
+    if (regItsChk && !regItsChk.value) miss.push('在庫区分');
+    toast(miss.length ? (miss.join('・') + 'を選んでください') : '未入力の項目があります', 'err');
+    return;
   }
 
   curQty = qtyVal;
@@ -3191,6 +3517,7 @@ async function regData() {
     seiVal = document.getElementById('sei').value.trim();
   }
 
+  var recPers = curPerson();   /* ★ [v5.0.0] ① { name, code } */
   var rec = {
     date:          now.getFullYear() + '/' + pad(now.getMonth()+1) + '/' + pad(now.getDate()),
     time:          pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
@@ -3201,8 +3528,10 @@ async function regData() {
     length:        lenVal,          /* ★ [v4.0.0] ③ mm整数。対象外部材は '' */
     quantity:      curQty,
     unit:          curUnit,
-    department:    document.getElementById('ds').value,
-    personnel:     document.getElementById('ps').value,
+    department:    document.getElementById('ds').value,   /* 担当者の絞り込み用。シートへは出力しない */
+    personnel:     recPers ? recPers.name : '',
+    personnelCode: recPers ? recPers.code : '',           /* ★ [v5.0.0] ① L列 */
+    location:      document.getElementById('ls').value,   /* ★ [v5.0.0] ① J列（棚卸場所） */
     inventoryType: document.getElementById('its').value,
     scanned_at:    now.toISOString(),
     scan_src:      curScanSrc || 'jan',   /* ★ [v3.4.0] スキャン種別（jan/qr/ocr）を保存 */
@@ -3309,7 +3638,7 @@ async function rendHist() {
       '<div class="hi-info">' +
         '<div class="hi-code">' + h(i.zuno) + ' <span style="font-size:9px;opacity:.7;">' + srcLabel + '</span>' + customTag + '</div>' +
         '<div class="hi-name">' + h(i.hinmei || '—') + '</div>' +
-        '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + h(i.department) + ' / ' + h(i.personnel) +
+        '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + (i.location ? h(i.location) : '<span style="color:#e07800;font-weight:700;">場所未設定</span>') + ' / ' + h(i.personnel) +
           (i.seiban ? ' / 製番:' + h(i.seiban) : '') +
           (i.length ? ' / 長さ:' + h(i.length) + 'mm' : '') + '</div>' +
         (hasError ? '<div class="hi-err">⚠ ' + h(i.last_error) + '</div>' : '') +
@@ -3574,10 +3903,14 @@ async function openEditModal(id) {
   /* ★ [v4.0.0] ③ 長さ（対象部材のみ） */
   updEmLenRow(item.hinmei, item.length);
 
-  /* メタ */
-  document.getElementById('emMeta').textContent =
-    (item.department || '') + ' / ' + (item.personnel || '') + ' / ' + (item.inventoryType || '')
-    + (item.is_custom ? ' / 特注品' : '');
+  /* ★ [v5.0.0] ① 場所・在庫区分・部署・担当者を選び直せるようにする（旧: 表示のみ）。
+     マスタから消えた値でも黙って失われないよう、現在値は必ず選択肢に残す。 */
+  fillEmSel('emLocSel',  dropData.locations || [],      item.location || '');
+  fillEmSel('emItsSel',  dropData.inventoryTypes || [], item.inventoryType || '');
+  fillEmSel('emDeptSel', Object.keys(persMap),          item.department || '');
+  fillPersSel(document.getElementById('emPersSel'), item.department || '',
+    item.personnel ? { name: item.personnel, code: item.personnelCode || '' } : null);
+  if (item.is_custom) tag.textContent += '・特注品';
 
   updEmSaveBtn();
 
@@ -3645,6 +3978,13 @@ function updEmSaveBtn() {
   if (lenBlk && lenBlk.style.display !== 'none') {
     ok = ok && isValidLen(document.getElementById('emLenInput').value);
   }
+  /* ★ [v5.0.0] ① 場所・担当者・在庫区分は空にできない（場所は必須＝田嶋さん判断） */
+  ['emLocSel', 'emPersSel', 'emItsSel'].forEach(function(id) {
+    var el = document.getElementById(id);
+    var empty = !el || !el.value;
+    if (el) el.classList.toggle('warn', empty);
+    ok = ok && !empty;
+  });
   btn.disabled = !ok;
 }
 
@@ -3722,6 +4062,30 @@ function emSearchMaster() {
 }
 
 /* モーダルを閉じる */
+/* ★ [v5.0.0] ① 修正画面のプルダウンを作る。cur がリストに無ければ末尾に足して選ぶ */
+function fillEmSel(id, items, cur) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = '';
+  var o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = '⎯ 選択 ⎯';
+  sel.appendChild(o0);
+  var list = (items || []).slice();
+  if (cur && list.indexOf(cur) < 0) list.push(cur);
+  for (var i = 0; i < list.length; i++) {
+    var o = document.createElement('option');
+    o.value = list[i]; o.textContent = list[i];
+    sel.appendChild(o);
+  }
+  sel.value = cur || '';
+}
+
+/* ★ [v5.0.0] ① 修正画面で部署を変えたら担当者を選び直させる */
+function onEmDeptChange() {
+  fillPersSel(document.getElementById('emPersSel'), document.getElementById('emDeptSel').value, null);
+  updEmSaveBtn();
+}
+
 function closeEditModal() {
   document.getElementById('editMover').classList.remove('on');
   _editItem = null;
@@ -3755,6 +4119,14 @@ async function saveEditModal() {
     }
   }
 
+  /* ★ [v5.0.0] ① 場所・担当者・在庫区分の未選択は保存させない（ボタンの活性に加えた防波堤） */
+  if (!document.getElementById('emLocSel').value || !document.getElementById('emPersSel').value
+      || !document.getElementById('emItsSel').value) {
+    updEmSaveBtn();
+    toast('場所・担当者・在庫区分を選んでください', 'err');
+    return;
+  }
+
   /* 修正前の状態をコピー（GASへ旧データを渡すため） */
   var oldItem = JSON.parse(JSON.stringify(_editItem));
 
@@ -3765,6 +4137,18 @@ async function saveEditModal() {
 
   /* 新しい値を適用 */
   _editItem.quantity = newQty;
+
+  /* ★ [v5.0.0] ① 場所・在庫区分・部署・担当者。担当者が変わるとシート側の行キーも変わるが、
+     GASの updateItem が同じ行をその場で上書きする。 */
+  var emDept = document.getElementById('emDeptSel').value;
+  var emPers = findPerson(emDept, document.getElementById('emPersSel').value);
+  _editItem.location      = document.getElementById('emLocSel').value;
+  _editItem.inventoryType = document.getElementById('emItsSel').value;
+  if (emPers) {
+    _editItem.department    = emDept;
+    _editItem.personnel     = emPers.name;
+    _editItem.personnelCode = emPers.code;
+  }
 
   if (_editItem.scan_src === 'ocr') {
     /* 図番修正 */
@@ -3873,8 +4257,10 @@ function toSendPayload(i) {
     size:          i.size   || '',
     length:        (i.length === undefined || i.length === null) ? '' : i.length,
     quantity:      i.quantity,
-    department:    i.department,
+    department:    i.department,          /* 旧GAS（v4.x）互換のため送る。v5.0.0のGASは使わない */
     personnel:     i.personnel,
+    personnelCode: i.personnelCode || '', /* ★ [v5.0.0] ① L列 */
+    location:      i.location || '',      /* ★ [v5.0.0] ① J列 */
     inventoryType: i.inventoryType,
     isCustom:      i.is_custom ? 1 : 0
   };
@@ -4233,6 +4619,7 @@ function sw(name) {
   }
   if (name !== 'scan' && camOn) stopCam();
   if (name === 'hist')   rendHist();
+  if (name === 'settings') { updDocHint(); updOcrStatsUI(); }   /* ★ [v5.0.0] ②③ */
   if (name === 'master') {
     if (masterData.length === 0 && !_loadingMaster) {
       loadAllMaster();
@@ -4241,6 +4628,12 @@ function sw(name) {
     }
   }
   document.getElementById('main').scrollTop = 0;
+}
+
+/* ★ [v5.0.0] ③ ホーム画面から起動しているときだけ、マニュアルからの戻り方を案内する */
+function updDocHint() {
+  var row = document.getElementById('docHintRow');
+  if (row) row.style.display = isStandalone() ? '' : 'none';
 }
 
 /* ============================================================
