@@ -1086,11 +1086,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.8<br>
+        <div class="s-info">DX棚卸アプリ v5.0.9<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.8: 読み取り方法に「手入力」を追加（マスタに無い図番は確認のうえ登録可・履歴に手入力タグ）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.9: カメラ撮像エリアの高さを画面に合わせて自動調整（「カメラを停止」の見切れを解消）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.8: 読み取り方法に「手入力」を追加（マスタに無い図番は確認のうえ登録可・履歴に手入力タグ）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.7: OCRの図番を全部消して打ち直すと「マスタ検索」ボタンが出ない不具合を修正。全角で入力した図番も半角に直します</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.6: 「マニュアル」タブを追加（設定の使い方を移動）。タブの文字を少し大きく</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.5: 履歴タブ・マスタタブの文字を大きく（スキャンタブの見出しと同じ大きさ）</span><br>
@@ -1390,6 +1391,8 @@ var QR_ROI_RATIO_TABLET = 0.63;
 /* ★ [v4.8.0] タブレットのカメラ撮像エリア高さの固定上限(px)。
    詳細は _setCamH() 内のコメント参照。 */
 var TABLET_CAM_MAX_H = 360;
+/* ★ [v5.0.9] カメラ撮像エリアの最低の高さ。これ以下には縮めない（縮みすぎると狙いを付けられない） */
+var CAM_MIN_H = 120;
 
 /* ★ [v4.0.0] ③ 長さ入力の対象部材。品名の先頭がいずれかに完全一致した
    ときだけ長さ欄を表示する。
@@ -2571,6 +2574,25 @@ async function startCam() {
       }
       v.style.height    = dh + 'px';
       wrap.style.height = dh + 'px';
+
+      /* ★ [v5.0.9] ここまでは「画面の高さ×比率」で決めた仮の高さ。最後に**実際にはみ出した分だけ縮める**。
+         比率だけで決めていると、上のカードが伸びたときに下の「カメラを停止」が画面外へ押し出される。
+         v5.0.0で棚卸場所の行が増え、v5.0.8で読み取り方法が4つ（アイコン＋文字の2段）になった結果、
+         幅375pxのiPhone（SE・miniなど）で**停止ボタンが94px見切れる**状態だった（実測）。
+         残っている高さから決めれば、今後カードが増减しても自動で追従する。 */
+      var mainEl = document.getElementById('main');
+      if (mainEl) {
+        var over = mainEl.scrollHeight - mainEl.clientHeight;
+        if (over > 0) {
+          var fit = Math.max(CAM_MIN_H, dh - over - 4);   /* 4px は下の余白 */
+          if (fit < dh) {
+            dh = fit;
+            v.style.height    = dh + 'px';
+            wrap.style.height = dh + 'px';
+          }
+        }
+      }
+
       /* ★ [v4.0.0] ⑤ 表示サイズが確定してからガイド枠(=ROI)を再計算する */
       updQrGuide();
     };
@@ -2974,7 +2996,9 @@ function capFrame() {
   if (!vw || !vh) return null;
   var wrap  = document.getElementById('cama');
   var dispW = wrap.getBoundingClientRect().width;
-  var dispH = dispW / SCAN_ASPECT_OCR;
+  /* ★ [v5.0.9] 表示中の実際の高さを使う。旧実装は幅÷2.8で計算していたが、v5.0.9で
+     撮像エリアの高さを画面に合わせて縮めるようにしたため、実寸と食い違うと切り出し位置がずれる。 */
+  var dispH = wrap.getBoundingClientRect().height || (dispW / SCAN_ASPECT_OCR);
   var gL = 0.08 * dispW, gT = 0.12 * dispH, gW = 0.84 * dispW, gH = 0.76 * dispH;
   /* ★ [v4.0.0] 表示座標→映像座標の変換（object-fit:cover のはみ出し補正と
      デジタルズーム補正）は mapGuideToVideo() に集約した。
