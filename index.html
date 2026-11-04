@@ -632,7 +632,7 @@
     padding:2px 4px;outline:none;-webkit-appearance:none;font-family:var(--font);
     letter-spacing:.08em;}
   .reg-sei-input:focus{border-bottom-color:var(--blue);}
-  /* ★ [v4.0.0] ③ 長さ入力（対象部材のみ表示・mm整数） */
+  /* ★ [v4.0.0] ③ 長さ入力（対象部材のみ表示・mm整数 → ★ [v5.1.0] m・小数3桁まで） */
   .reg-len-col{flex:1;min-width:0;}
   .reg-len-wrap{display:flex;align-items:baseline;gap:6px;min-width:0;}
   .reg-len-input{flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--filled);
@@ -1086,11 +1086,13 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.0.9<br>
+        <div class="s-info">DX棚卸アプリ v5.2.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.0.9: カメラ撮像エリアの高さを画面に合わせて自動調整（「カメラを停止」の見切れを解消）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.2.0: 棚卸場所に合わせて在庫区分の初期値を表示（登録画面を開くたびに初期値に戻ります）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.1.0: 長さの単位を mm から m に変更（小数3桁まで入力可）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.0.9: カメラ撮像エリアの高さを画面に合わせて自動調整（「カメラを停止」の見切れを解消）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.8: 読み取り方法に「手入力」を追加（マスタに無い図番は確認のうえ登録可・履歴に手入力タグ）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.7: OCRの図番を全部消して打ち直すと「マスタ検索」ボタンが出ない不具合を修正。全角で入力した図番も半角に直します</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.6: 「マニュアル」タブを追加（設定の使い方を移動）。タブの文字を少し大きく</span><br>
@@ -1194,18 +1196,20 @@
           <div class="reg-hinmei-msg" id="regHinmeiMsg">⚠ 品名は全角で入力してください</div>
         </div>
       </div>
-      <!-- ★ [v4.0.0] ③ フォーム行：長さ（対象部材のみ表示・mm整数） -->
+      <!-- ★ [v4.0.0] ③ フォーム行：長さ（対象部材のみ表示）
+           ★ [v5.1.0] 単位を mm整数 → m（小数3桁まで）に変更（田嶋さん判断 B4・L1）。
+              小数点を打てるよう inputmode="decimal"（pattern="[0-9]*" は数字キーボードに固定されるので外した） -->
       <div class="reg-form-row" id="regLenRow" style="display:none">
         <div class="reg-form-label">長さ</div>
         <div class="reg-len-col">
           <div class="reg-len-wrap">
             <input type="text" class="reg-len-input" id="regLenInput"
-              inputmode="numeric" pattern="[0-9]*" maxlength="6"
-              placeholder="例: 4000" autocomplete="off"
+              inputmode="decimal" maxlength="7"
+              placeholder="例: 4.5" autocomplete="off"
               oninput="onRegLenInput()">
-            <span class="reg-len-unit">mm</span>
+            <span class="reg-len-unit">m</span>
           </div>
-          <div class="reg-len-msg" id="regLenMsg">⚠ 長さの入力は必須です（半角数字）</div>
+          <div class="reg-len-msg" id="regLenMsg">⚠ 長さの入力は必須です（m・半角数字）</div>
         </div>
       </div>
       <!-- フォーム行：在庫区分（常時表示・必須） -->
@@ -1284,16 +1288,16 @@
           autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
           placeholder="製番（任意）">
       </div>
-      <!-- ★ [v4.0.0] ③ 長さ（対象部材のみ表示・mm整数） -->
+      <!-- ★ [v4.0.0] ③ 長さ（対象部材のみ表示）  ★ [v5.1.0] 単位を m（小数3桁まで）に変更 -->
       <div class="em-field" id="emLenBlock" style="display:none;">
         <div class="em-label">長さ</div>
         <div class="em-len-wrap">
           <input type="text" class="em-input" id="emLenInput"
-            inputmode="numeric" pattern="[0-9]*" maxlength="6"
-            placeholder="例: 4000" autocomplete="off" oninput="onEmLenInput()">
-          <span class="em-len-unit">mm</span>
+            inputmode="decimal" maxlength="7"
+            placeholder="例: 4.5" autocomplete="off" oninput="onEmLenInput()">
+          <span class="em-len-unit">m</span>
         </div>
-        <div class="em-len-msg" id="emLenMsg">⚠ 長さの入力は必須です（半角数字）</div>
+        <div class="em-len-msg" id="emLenMsg">⚠ 長さの入力は必須です（m・半角数字）</div>
       </div>
       <div class="em-divider"></div>
       <!-- 数量（常時編集可） -->
@@ -1572,12 +1576,25 @@ function needsLength(hinmei) {
   return false;
 }
 
-/* 長さの正規化（mm整数のみ。未入力は '' を返す） */
+/* ★ [v5.1.0] 長さの入力文字を整える（単位 m・小数3桁まで）。
+   全角の数字・ピリオドは半角に直し、数字と最初の小数点だけを残して、小数は3桁（=1mm）で打ち切る。
+   旧版は mm 整数だったので数字以外をすべて捨てていた（そのままだと 4.5 が 45 になる）。 */
+function cleanLenText(v) {
+  var s = String(v === null || v === undefined ? '' : v)
+    .replace(/[０-９．]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/[。｡]/g, '.')      /* 日本語入力のまま「.」キーを押すと「。」になるため */
+    .replace(/[^0-9.]/g, '');
+  var dot = s.indexOf('.');
+  if (dot >= 0) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '').slice(0, 3);
+  return s;
+}
+
+/* 長さの正規化（単位 m の数値。未入力は '' を返す）  ★ [v5.1.0] mm整数 → m（小数3桁まで） */
 function normLenInput(v) {
-  var s = String(v === null || v === undefined ? '' : v).replace(/[^0-9]/g, '');
-  if (!s) return '';
-  var n = parseInt(s, 10);
-  return isNaN(n) ? '' : n;
+  var s = cleanLenText(v);
+  if (!s || s === '.') return '';
+  var n = parseFloat(s);
+  return isNaN(n) ? '' : Math.round(n * 1000) / 1000;
 }
 
 /* ★ [v4.0.0] ③ 長さの妥当性。対象部材では必須。
@@ -2108,6 +2125,8 @@ function applyMasterData(dd, master, allPers, tailZero) {
   dropData    = dd || { locations:[], departments:[], inventoryTypes:[] };
   /* ★ [v5.0.0] ① 旧GAS・旧キャッシュには locations が無い。departments も同じA列なので代わりに使う */
   if (!Array.isArray(dropData.locations)) dropData.locations = dropData.departments || [];
+  /* ★ [v5.2.0] 場所ごとの初期の在庫区分（GAS v5.0.2〜）。旧GAS・旧キャッシュには無いので空＝従来どおり */
+  if (!dropData.locationDefaults || typeof dropData.locationDefaults !== 'object') dropData.locationDefaults = {};
   masterData  = Array.isArray(master) ? master : [];
   persMap     = normalizePersMap(allPers);   /* ★ [v5.0.0] ① { 部署: [{name, code}] } にそろえる */
   tailZeroSet = new Set(
@@ -2237,6 +2256,29 @@ function onLoc() {
 /* ★ [v5.0.0] ① いま選ばれている担当者 { name, code }。未選択なら null */
 function curPerson() {
   return findPerson(document.getElementById('ds').value, document.getElementById('ps').value);
+}
+
+/* ★ [v5.2.0] 棚卸場所ごとの初期の在庫区分（プルダウンマスタH列）。選べる値（F列）に無ければ使わない。
+   田嶋さん判断：プレス・溶接・ロングルーフ・塗装・梱包・パネル・ボルトセット＝仕掛品、業務＝製品。
+   どの場所をどの区分にするかはシートで決める（アプリには場所名を持たない）。 */
+function defaultItypeForLoc(loc) {
+  var t = loc ? (dropData.locationDefaults || {})[loc] : '';
+  return (t && (dropData.inventoryTypes || []).indexOf(t) >= 0) ? t : '';
+}
+
+/* ★ [v5.2.0] 登録画面を開くたびに、その場所の初期値に戻す（田嶋さん判断 E2）。
+   手で変えた区分を次の品物に持ち越さない（1件だけ材料に変えて、そのまま次も材料で登録する誤りを防ぐ）。
+   初期値の無い場所は従来どおり「最後に手で選んだ区分」（sessionStorage の inv_itype）に戻す。
+   ここで入れた初期値は inv_itype に書かないので、初期値のある場所から移っても、その初期値は持ち越さない。 */
+function applyLocItype() {
+  var its = document.getElementById('its');
+  var d = defaultItypeForLoc(document.getElementById('ls').value);
+  if (d) { its.value = d; return d; }
+  var saved = '';
+  try { saved = sessionStorage.getItem('inv_itype') || ''; } catch(e) {}
+  its.value = saved;
+  if (its.value !== saved) its.value = '';   /* 選べない値なら未選択（登録時に選んでもらう） */
+  return '';
 }
 
 /* ★ [v2.4.0] 在庫区分も sessionStorage 永続化 */
@@ -3380,6 +3422,7 @@ function openRegModal(isHit) {
   syncRegHinmei();
 
   /* --- 在庫区分セレクトをモーダル用に同期 --- */
+  applyLocItype();   /* ★ [v5.2.0] 場所に初期の在庫区分があれば、開くたびにそれに戻す */
   var itsSrc = document.getElementById('its');
   var itsDst = document.getElementById('regItsSelect');
   if (itsSrc && itsDst) {
@@ -3498,7 +3541,7 @@ function syncRegHinmei() {
 }
 
 /* ============================================================
-   ★ [v4.0.0] ③ 長さ欄（対象部材のみ表示・mm整数）
+   ★ [v4.0.0] ③ 長さ欄（対象部材のみ表示・mm整数 → ★ [v5.1.0] m・小数3桁まで）
    品名の先頭が Ｈ型鋼 / Ｃ型鋼 / 角パイプ … のいずれかに一致したときだけ出す。
    対象外に変わったら値も必ず捨てる（前の部材の長さが残ると誤登録になる）。
    ※ ★ [v4.5.0で訂正] 長さは v4.0.0 で**必須**になっている。
@@ -3532,7 +3575,7 @@ function syncRegLen() {
 
 function onRegLenInput() {
   var el = document.getElementById('regLenInput');
-  var cleaned = el.value.replace(/[^0-9]/g, '');
+  var cleaned = cleanLenText(el.value);   /* ★ [v5.1.0] 小数点を残す */
   if (el.value !== cleaned) el.value = cleaned;
   syncRegLen();
 }
@@ -3650,7 +3693,7 @@ async function regData() {
     var lenInpEl = document.getElementById('regLenInput');
     if (!isValidLen(lenInpEl ? lenInpEl.value : '')) {
       syncRegLen();
-      toast('長さの入力は必須です（半角数字）', 'err');
+      toast('長さの入力は必須です（m・半角数字）', 'err');
       if (lenInpEl) { lenInpEl.focus(); lenInpEl.select(); }
       return;
     }
@@ -3725,7 +3768,7 @@ async function regData() {
     seiban:        seiVal,
     hinmei:        hinmeiVal,
     size:          size,
-    length:        lenVal,          /* ★ [v4.0.0] ③ mm整数。対象外部材は '' */
+    length:        lenVal,          /* ★ [v4.0.0] ③ 対象外部材は ''  ★ [v5.1.0] 単位 m（小数3桁まで） */
     quantity:      curQty,
     unit:          curUnit,
     department:    document.getElementById('ds').value,   /* 担当者の絞り込み用。シートへは出力しない */
@@ -3750,7 +3793,7 @@ async function regData() {
   closeRegModal();
   beepReg();   /* ★ [v3.3.1] 登録完了音（スキャン音と区別できる2音） */
   toast('登録しました ✔  ' + rec.zuno
-      + (rec.length !== '' ? '  ' + rec.length + 'mm' : '')
+      + (rec.length !== '' ? '  ' + rec.length + 'm'   /* ★ [v5.1.0] */ : '')
       + '  ' + rec.quantity + (rec.unit || '個')
       + (rec.is_custom ? '（特注品）' : ''), 'ok');
   resetScan();
@@ -3842,7 +3885,7 @@ async function rendHist() {
         '<div class="hi-name">' + h(i.hinmei || '—') + '</div>' +
         '<div class="hi-meta">' + h(i.date) + ' ' + h(i.time) + ' / ' + (i.location ? h(i.location) : '<span style="color:#e07800;font-weight:700;">棚卸場所未設定</span>') + ' / ' + h(i.personnel) +
           (i.seiban ? ' / 製番:' + h(i.seiban) : '') +
-          (i.length ? ' / 長さ:' + h(i.length) + 'mm' : '') + '</div>' +
+          (i.length ? ' / 長さ:' + h(i.length) + 'm' : '') + '</div>' +
         (hasError ? '<div class="hi-err">⚠ ' + h(i.last_error) + '</div>' : '') +
       '</div>' +
       '<div class="hi-right">' +
@@ -4159,7 +4202,7 @@ function syncEmLen() {
 
 function onEmLenInput() {
   var el = document.getElementById('emLenInput');
-  var cleaned = el.value.replace(/[^0-9]/g, '');
+  var cleaned = cleanLenText(el.value);   /* ★ [v5.1.0] 小数点を残す */
   if (el.value !== cleaned) el.value = cleaned;
   syncEmLen();
   updEmSaveBtn();
@@ -4316,7 +4359,7 @@ async function saveEditModal() {
     var emLenEl = document.getElementById('emLenInput');
     if (!isValidLen(emLenEl ? emLenEl.value : '')) {
       syncEmLen();
-      toast('長さの入力は必須です（半角数字）', 'err');
+      toast('長さの入力は必須です（m・半角数字）', 'err');
       if (emLenEl) { emLenEl.focus(); emLenEl.select(); }
       return;
     }
