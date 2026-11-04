@@ -1086,11 +1086,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.2.0<br>
+        <div class="s-info">DX棚卸アプリ v5.3.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.2.0: 棚卸場所に合わせて在庫区分の初期値を表示（登録画面を開くたびに初期値に戻ります）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.3.0: OCRで鋼材の白ペン手書きの図番を読めるように改善（読み取った文字をマスタと照合）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.2.0: 棚卸場所に合わせて在庫区分の初期値を表示（登録画面を開くたびに初期値に戻ります）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.1.0: 長さの単位を mm から m に変更（小数3桁まで入力可）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.9: カメラ撮像エリアの高さを画面に合わせて自動調整（「カメラを停止」の見切れを解消）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.8: 読み取り方法に「手入力」を追加（マスタに無い図番は確認のうえ登録可・履歴に手入力タグ）</span><br>
@@ -2973,8 +2974,9 @@ async function doOCR() {
     var box = document.getElementById('obox');
     var inp = document.getElementById('opi');
     box.classList.add('on');
-    if (res.part) {
-      inp.value = normalizeOcrCode(res.part); inp.className = '';
+    var picked = pickOcrCode(rawT, res.part);   /* ★ [v5.3.0] 読み取り文字をマスタと照らして拾い直す */
+    if (picked) {
+      inp.value = normalizeOcrCode(picked.code); inp.className = '';
       document.getElementById('oph').textContent = '修正が必要な場合は直接編集し、マスタ検索を押してください';
       document.getElementById('sb-srch').style.display = 'flex';
       toast('図番を読み取りました', 'ok');
@@ -3060,7 +3062,10 @@ function capFrame() {
     out.height = Math.round(crop.height * r2);
     out.getContext('2d').drawImage(crop, 0, 0, out.width, out.height);
   }
-  out = preprocessForOCR(out);
+  /* ★ [v5.3.0] 前処理（preprocessForOCR：グレー化・明暗の引き伸ばし・輪郭強調）をやめ、縮小だけで送る。
+     鋼材の白ペン手書き（6枚）と印字ラベル（3枚）で Vision に読ませて比べたところ、前処理なしが両方で最もよく、
+     前処理ありは白ペンの「HL0660」で文字そのものが読めなくなった（2026-11-04 実測。HANDOFF §4 v5.3.0）。
+     preprocessForOCR() は戻せるよう残してある。 */
   return out.toDataURL('image/jpeg', 0.82).replace(/^data:image\/jpeg;base64,/, '');
 }
 
@@ -3072,6 +3077,110 @@ function normalizeOcrCode(raw) {
   var s = toHalfAlnum(raw).toUpperCase().replace(/[^A-Z0-9\-]/g, '');   /* ★ [v5.0.7] 全角→半角 */
   s = s.replace(/^H15/, 'HF');
   return s;
+}
+
+/* ============================================================
+   ★ [v5.3.0] OCRの読み取り文字から図番を拾い直す（白ペン手書き対応）
+   GAS の extractPart() は「図番らしい語を1つ選ぶ」だけなので、手書きで
+     - 英字と数字の間に点や空白が入る（「AL・7147」「HL 1633」）
+     - 文字が化ける（A→4「45-3234」、H→FI・A「FIL 0660」「ALC660」）
+   と拾えない。端末は全マスタを持っているので、読み取り文字（rawText）をマスタと照らして拾い直す。
+   順番：① マスタ照合 ocrMasterCandidates() → ② 行ごとの点数付け ocrLineBestToken() → ③ GAS の part。
+   前提：OCRの1フレームに写る図番は1種類だけ（田嶋さん指定）。候補を選ばせる画面は作らない。
+   実測（白ペン6枚・印字3枚、HANDOFF §4 v5.3.0）：白ペンは今の拾い方 2〜3/6 → 6/6、誤ヒット0。
+   ============================================================ */
+
+/* 見分けにくい文字の組（どちら向きにも入れ替えてよい）。実測で化けたもの：A⇔4、A⇔H、C⇔0、O⇔0、G⇔6、I⇔1 */
+var OCR_CONFUSABLE = ['O0', 'OD', '0D', 'OQ', '0Q', 'I1', 'IL', '1L', 'S5', 'Z2', 'B8', 'G6', 'T7', 'A4', 'UV',
+                      'C0', 'CG', 'C6', 'AH'];
+var _ocrPairs = null, _ocrByLen = null, _ocrByLenSrc = null;
+
+/* マスタの図番（記号を除いたもの）を長さごとに分けておく。マスタが入れ替わったら作り直す */
+function ocrMasterByLen() {
+  if (!masterIndex) buildMasterIndex();
+  if (_ocrByLen && _ocrByLenSrc === masterIndex) return _ocrByLen;
+  _ocrByLen = {};
+  masterIndex.forEach(function(v, k) { (_ocrByLen[k.length] = _ocrByLen[k.length] || []).push(k); });
+  _ocrByLenSrc = masterIndex;
+  return _ocrByLen;
+}
+
+/* ① 読み取り文字から、マスタに実在する図番の候補（違いの少ない順・見つかった順）。
+   同じ行で隣り合う語（3つまで）をつなぎ、長さが同じマスタの図番と1文字ずつ比べて、
+   違う文字が「見分けにくい組」だけなら候補にする。違ってよいのは長さの1/3まで（最大3文字）。
+   手書きの H は「FI」「F1」と読まれやすいので、置き換えた行も試す。 */
+function ocrMasterCandidates(text) {
+  if (!masterData || !masterData.length) return [];
+  if (!_ocrPairs) {
+    _ocrPairs = {};
+    OCR_CONFUSABLE.forEach(function(p) { _ocrPairs[p] = 1; _ocrPairs[p.charAt(1) + p.charAt(0)] = 1; });
+  }
+  var byLen = ocrMasterByLen();
+  var found = {}, order = [], pos = 0;
+  var lines = toHalfAlnum(String(text || '')).replace(/[|]/g, '1').toUpperCase().split(/\r?\n/);
+  for (var li = 0; li < lines.length; li++) {
+    var variants = [lines[li], lines[li].replace(/F[I1]/g, 'H')];
+    for (var vi = 0; vi < variants.length; vi++) {
+      var toks = variants[vi].split(/[^A-Z0-9]+/).filter(function(t) { return t; });
+      for (var i = 0; i < toks.length; i++) {
+        for (var n = 1; n <= 3 && i + n <= toks.length; n++) {
+          var base = toks.slice(i, i + n).join('');
+          if (base.length < 4 || base.length > 15) continue;
+          var maxCost = Math.min(3, Math.floor(base.length / 3));
+          var list = byLen[base.length] || [];
+          for (var c = 0; c < list.length; c++) {
+            var code = list[c], cost = 0;
+            for (var k = 0; k < base.length && cost <= maxCost; k++) {
+              var a = base.charAt(k), b = code.charAt(k);
+              if (a !== b) cost += _ocrPairs[a + b] ? 1 : 99;
+            }
+            if (cost > maxCost) continue;
+            if (!found[code]) { found[code] = { cost: cost, pos: pos }; order.push(code); }
+            else if (cost < found[code].cost) found[code].cost = cost;
+          }
+          pos++;
+        }
+      }
+    }
+  }
+  return order.sort(function(x, y) { return found[x].cost - found[y].cost || found[x].pos - found[y].pos; });
+}
+
+/* ② マスタに無いとき（特注品など）：GAS の extractPart() と同じ点数付けを、行ごとに行う。
+   GAS は改行を空白にしてから「 - 」を詰めるため、行頭の「-」で前の行の語とつながることがあった
+   （実測：「LW7-605」の次の行「- KJ-0901」→「LW7605KJ0901」）。 */
+function ocrLineBestToken(text) {
+  var lines = toHalfAlnum(String(text || '')).replace(/[ー―–—−]/g, '-').toUpperCase().split(/\r?\n/);
+  var best = null, bestScore = -1;
+  for (var li = 0; li < lines.length; li++) {
+    var toks = lines[li].replace(/[^A-Z0-9\-\s]/g, ' ').replace(/\s*-\s*/g, '-').split(/\s+/);
+    for (var i = 0; i < toks.length; i++) {
+      var up = toks[i].replace(/^-+|-+$/g, '');
+      if (up.length < 2 || up.length > 25) continue;
+      var hasA = /[A-Z]/.test(up), hasD = /[0-9]/.test(up), hasH = /-/.test(up), core = up.replace(/-/g, '').length;
+      var sc = 0;
+      if (hasA && hasD) sc += 6;
+      if (hasH) sc += 3;
+      if (core >= 6) sc += 3;
+      if (core >= 7) sc += 2;
+      if (core >= 4) sc += 1;
+      if (!hasA && hasD && core >= 6) sc += 4;
+      if (!hasA && hasD && core >= 7) sc += 2;
+      if (core > 15) sc -= 3;
+      if (hasA && !hasD && !hasH) sc -= 3;
+      if (sc > bestScore) { bestScore = sc; best = up; }
+    }
+  }
+  return bestScore >= 3 ? best : null;
+}
+
+/* ①→②→③ の順で図番を決める。{ code, how: 'master'|'line'|'gas' } または null */
+function pickOcrCode(rawText, gasPart) {
+  var m = ocrMasterCandidates(rawText);
+  if (m.length) return { code: m[0], how: 'master' };
+  var t = ocrLineBestToken(rawText);
+  if (t) return { code: t, how: 'line' };
+  return gasPart ? { code: gasPart, how: 'gas' } : null;
 }
 
 /* ============================================================
