@@ -1086,11 +1086,12 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.3.0<br>
+        <div class="s-info">DX棚卸アプリ v5.4.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.3.0: OCRで鋼材の白ペン手書きの図番を読めるように改善（読み取った文字をマスタと照合）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.4.0: 送信・修正・マスタ読込の安全性を改善（送信中の修正の取りこぼし、全角の図番、登録の二度押しなど）</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.3.0: OCRで鋼材の白ペン手書きの図番を読めるように改善（読み取った文字をマスタと照合）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.2.0: 棚卸場所に合わせて在庫区分の初期値を表示（登録画面を開くたびに初期値に戻ります）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.1.0: 長さの単位を mm から m に変更（小数3桁まで入力可）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.0.9: カメラ撮像エリアの高さを画面に合わせて自動調整（「カメラを停止」の見切れを解消）</span><br>
@@ -1549,8 +1550,11 @@ function stripTrailingZeroSpace(code) {
   return stripped;
 }
 
+/* ★ [v5.4.0] 全角の英数字を半角にしてから記号を除く。
+   旧版は全角を記号として捨てていたため、登録画面・修正画面の図番欄に「HF１２０１００」と打つと
+   「HF」で保存され、全部全角なら図番が空になっていた（2026-11-09 セルフチェック A5）。 */
 function stripSymbols(code) {
-  return String(code).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return toHalfAlnum(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 /* ============================================================
@@ -1735,6 +1739,14 @@ function dbP(s, d) {
       return;
     }
     var q = tx_(s,'readwrite').put(d);
+    q.onsuccess = function() { r(q.result); };
+    q.onerror   = function() { e(q.error); };
+  });
+}
+/* ★ [v5.4.0] 1件読む（無ければ undefined） */
+function dbGet(s, k) {
+  return new Promise(function(r, e) {
+    var q = tx_(s,'readonly').get(k);
     q.onsuccess = function() { r(q.result); };
     q.onerror   = function() { e(q.error); };
   });
@@ -1946,7 +1958,9 @@ async function saveMasterCache(dd, master, persmap, tailzero) {
 async function loadMasterFromCache() {
   try {
     var master = await metaGet(META_MASTER_KEY);
-    if (!master) return null;
+    /* ★ [v5.4.0] 中身が配列でない・0件の保存データは無いものとして扱う（旧版で GAS のエラー応答を
+       保存してしまった端末でも、次の起動で自動的に取り直す。セルフチェック A4） */
+    if (!Array.isArray(master) || !master.length) return null;
     return {
       dropData: await metaGet(META_DROP_KEY),
       master:   master,
@@ -2088,6 +2102,20 @@ async function loadAllMaster(isReload) {
     var master   = results[1];
     var allPers  = results[2];
     var tailZero = results[3];
+
+    /* ★ [v5.4.0] GAS が例外で {success:false, message} を返したときに、それをマスタとして適用・保存しない。
+       旧版は保存してしまい、24時間マスタ0件・棚卸場所が空のままになった（セルフチェック A4）。
+       ここで止めれば下の catch で前回の保存データに戻る。 */
+    var gasErr = function(x) { return x && typeof x === 'object' && !Array.isArray(x) && x.success === false; };
+    var bad = [];
+    if (gasErr(dd) || !dd || !(Array.isArray(dd.locations) || Array.isArray(dd.departments))) bad.push('プルダウン');
+    if (!Array.isArray(master) || !master.length) bad.push('製品マスター');
+    if (gasErr(allPers) || !allPers || typeof allPers !== 'object') bad.push('担当者');
+    if (!Array.isArray(tailZero)) bad.push('末尾0リスト');
+    if (bad.length) {
+      var why = [dd, master, allPers, tailZero].filter(gasErr).map(function(x) { return x.message || ''; }).join(' / ');
+      throw new Error(bad.join('・') + 'を読めませんでした' + (why ? '（' + why + '）' : ''));
+    }
 
     applyMasterData(dd, master, allPers, tailZero);
 
@@ -3785,7 +3813,15 @@ function updReg() {
 /* ============================================================
    データ登録 → IndexedDB
    ============================================================ */
+/* ★ [v5.4.0] 登録の二度押し・Enter の連打で同じ記録が2件できないようにする（セルフチェック）。
+   保存（IndexedDB）が終わって画面が閉じるまでの間の2回目は受け付けない。 */
+var _regBusy = false;
 async function regData() {
+  if (_regBusy) return;
+  _regBusy = true;
+  try { return await regDataBody(); } finally { _regBusy = false; }
+}
+async function regDataBody() {
   /* ★ [v3.0.0] 数量をモーダルの入力欄から取得 */
   var qtyInp = document.getElementById('regQtyInput');
   var qtyVal = parseInt(qtyInp ? qtyInp.value : '0', 10);
@@ -3859,7 +3895,11 @@ async function regData() {
 
   /* ★ [v3.1.0] OCR時はモーダルの製番入力欄から取得、それ以外は元のsei欄 */
   var seiVal = '';
-  if (curScanSrc === 'ocr' || curScanSrc === 'manual') {   /* ★ [v5.0.8] */
+  /* ★ [v5.4.0] バーコード・QR でマスタに無かったときも製番欄が出る（|| !hitFlag）。旧版はその欄を読まず、
+     入れた製番が捨てられていた。欄が出ていればそこから読む（セルフチェック） */
+  var seiRowShown = document.getElementById('regSeiRow');
+  seiRowShown = !!(seiRowShown && seiRowShown.style.display !== 'none');
+  if (curScanSrc === 'ocr' || curScanSrc === 'manual' || seiRowShown) {   /* ★ [v5.0.8] */
     var regSeiEl = document.getElementById('regSeiInput');
     seiVal = regSeiEl ? regSeiEl.value.trim() : '';
     /* 本体側のsei欄にも同期 */
@@ -4207,6 +4247,8 @@ var _emHitData = null;  /* マスタ検索ヒット結果 */
 
 /* 修正モーダルを開く（履歴行タップ） */
 async function openEditModal(id) {
+  /* ★ [v5.4.0] 送信中は修正を開かない（送信の結果と修正がぶつかるため。セルフチェック A2） */
+  if (_sending) { toast('送信中です。送信が終わってから修正してください', 'info'); return; }
   /* IndexedDBから対象レコードを取得 */
   var all = await dbA('inv');
   var item = null;
@@ -4456,6 +4498,7 @@ function closeEditModal() {
    ============================================================ */
 async function saveEditModal() {
   if (!_editItem) return;
+  if (_sending) { toast('送信中です。少し待ってからもう一度「保存」を押してください', 'info'); return; }   /* ★ [v5.4.0] */
 
   var newQty = parseInt(document.getElementById('emQtyInput').value, 10);
   if (isNaN(newQty) || newQty < 0) {
@@ -4674,6 +4717,12 @@ async function sendPending(opts) {
     var errorCount   = 0;
     for (var j = 0; j < pend.length; j++) {
       var r = results[j];
+      /* ★ [v5.4.0] 送信している間に、この記録が削除・修正されていたら書き戻さない。
+         旧版は送る前に取った記録（pend）で上書きしていたため、送信中に直した内容が消え、
+         削除した記録が復活した（セルフチェック A2）。修正されたものは未送信のまま残り、次の送信で送られる。 */
+      var curRec = await dbGet('inv', pend[j].id);
+      if (!curRec) continue;
+      if ((curRec.modified_at || '') !== (pend[j].modified_at || '')) continue;
       if (r && r.success) {
         pend[j].sent_flag  = 1;
         pend[j].last_error = '';
@@ -5034,6 +5083,7 @@ async function checkCacheStatus() {
    データ管理
    ============================================================ */
 async function clrSent() {
+  if (_sending) { toast('送信中です。送信が終わってから削除してください', 'info'); return; }   /* ★ [v5.4.0] */
   if (!confirm('送信済み履歴を削除しますか？')) return;
   var all = await dbA('inv');
   for (var i = 0; i < all.length; i++) {
@@ -5043,7 +5093,12 @@ async function clrSent() {
   await updBadge(); await rendHist();
 }
 async function clrAll() {
-  if (!confirm('全履歴を削除します。元に戻せません。')) return;
+  if (_sending) { toast('送信中です。送信が終わってから削除してください', 'info'); return; }   /* ★ [v5.4.0] */
+  /* ★ [v5.4.0] 未送信が残っていれば件数を出す（共用端末で他の人の未送信を消さないように） */
+  var allC = await dbA('inv');
+  var pendC = allC.filter(function(i) { return i.sent_flag === 0; }).length;
+  if (!confirm('全履歴を削除します。元に戻せません。'
+      + (pendC ? '\n\n⚠ まだ送信していない記録が ' + pendC + ' 件あります。これも消えます。' : ''))) return;
   await dbC('inv');
   toast('全履歴を削除しました');
   await updBadge(); await rendHist();
