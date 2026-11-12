@@ -317,6 +317,8 @@
   #opi.notfound{color:#ff5555;}
   #opi.editing{border-color:#ffaa00;color:#ffaa00;}
   .ocr-hint{font-size:10px;color:#888;text-align:center;margin-top:3px;}
+  /* ★ [v5.5.0] マスタに合わせて置き換えたときは目立たせる */
+  .ocr-hint.ocr-fixed{font-size:13px;color:#b45309;font-weight:700;}
   .qty-sec{margin-top:8px;}
   .qty-lbl{font-size:16px;color:var(--blue-dk);font-weight:700;letter-spacing:.04em;margin-bottom:6px;}
   /* qty-disp/qty-grid/qbtn CSS removed in v3.0.0 */
@@ -610,6 +612,9 @@
   /* ★ [v5.0.1] 未選択のクラス名を empty → unset に変更。履歴が空のときの .empty{padding:40px 18px} と
      衝突し、「場所未選択」バッジが縦に105pxまで伸びていた（v3.x から潜在。場所を必須にして目立つようになった）。 */
   .reg-op-badge.unset{background:var(--warn);}
+  /* ★ [v5.5.0] 共用端末で前の人の名前のまま登録しないよう、担当者は色を変えて大きく見せる（田嶋さん判断 #9） */
+  .reg-op-badge.pers{flex:1.3;font-size:19px;letter-spacing:0;padding:7px 8px;background:linear-gradient(135deg,#b45309,#d97706);}
+  .reg-op-badge.pers.unset{background:var(--warn);}
   /* フォーム行（ラベル横並び） */
   .reg-form-row{display:flex;align-items:flex-start;gap:10px;
     border-bottom:1px solid var(--blue-lt);padding:8px 0;}
@@ -1086,11 +1091,13 @@
       <div class="ss-lbl">バージョン</div>
       <div class="s-card">
         <div class="s-row">
-        <div class="s-info">DX棚卸アプリ v5.4.0<br>
+        <div class="s-info">DX棚卸アプリ v5.6.0<br>
           ローカルDB: IndexedDB / QRエンジン: jsQR 1.4.0 / バーコード: ZXing 0.19.1<br>
           OCR: Google Cloud Vision API (GAS経由)<br>
           <span id="ocrStats">OCR所要時間: まだ記録がありません</span><br>
-          <span style="color:#0f9e6e;font-weight:700;">✔ v5.4.0: 送信・修正・マスタ読込の安全性を改善（送信中の修正の取りこぼし、全角の図番、登録の二度押しなど）</span><br>
+          <span style="color:#0f9e6e;font-weight:700;">✔ v5.6.0: 送信済みの記録を直したとき、電波が無くても次の送信でシートの行を正しく直すように</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.5.0: OCRでマスタに合わせた図番を表示／数量0の確認・小数は不可／送信を50件ずつに分割／担当者を目立つ表示に</span><br>
+          <span style="color:#6b7a99;font-weight:500;">v5.4.0: 送信・修正・マスタ読込の安全性を改善（送信中の修正の取りこぼし、全角の図番、登録の二度押しなど）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.3.0: OCRで鋼材の白ペン手書きの図番を読めるように改善（読み取った文字をマスタと照合）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.2.0: 棚卸場所に合わせて在庫区分の初期値を表示（登録画面を開くたびに初期値に戻ります）</span><br>
           <span style="color:#6b7a99;font-weight:500;">v5.1.0: 長さの単位を mm から m に変更（小数3桁まで入力可）</span><br>
@@ -1350,6 +1357,7 @@ var GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyPhUt8tk3fJ2P-VcIh6
 
 /* ★ [v2.4.0 / Bug-7] タイムアウト60秒 */
 var GAS_TIMEOUT_MS = 60000;
+var SEND_CHUNK     = 50;      /* ★ [v5.5.0] 一括送信の1回あたりの件数（60秒で打ち切られないように） */
 
 /* ============================================================
    定数・グローバル状態
@@ -1588,6 +1596,7 @@ function cleanLenText(v) {
   var s = String(v === null || v === undefined ? '' : v)
     .replace(/[０-９．]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
     .replace(/[。｡]/g, '.')      /* 日本語入力のまま「.」キーを押すと「。」になるため */
+    .replace(/[,，、]/g, '.')    /* ★ [v5.5.0] 「4,5」を 45 にしない。「4,500」(mm の桁区切り)も 4.500m になる */
     .replace(/[^0-9.]/g, '');
   var dot = s.indexOf('.');
   if (dot >= 0) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '').slice(0, 3);
@@ -1600,6 +1609,24 @@ function normLenInput(v) {
   if (!s || s === '.') return '';
   var n = parseFloat(s);
   return isNaN(n) ? '' : Math.round(n * 1000) / 1000;
+}
+
+/* ★ [v5.5.0] 数量の読み取り（田嶋さん判断 #7）。IBM-i の数量は整数（NUMERIC(7,0)）。
+   旧版は parseInt で「2.5」を黙って 2 にしていた。小数・数字でない入力はエラーにする。
+   空欄は empty:true（登録では「0で登録しますか？」を確認する）。
+   el を渡すと、type=number が数字として読めなかった入力（validity.badInput）も見分ける。 */
+function parseQtyInput(v, el) {
+  if (el && el.validity && el.validity.badInput) return { err: '数量は数字で入力してください' };
+  var t = String(v === null || v === undefined ? '' : v).trim()
+    .replace(/[０-９．]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  if (t === '') return { n: 0, empty: true };
+  if (/^\d+$/.test(t)) {
+    var n = parseInt(t, 10);
+    return n > 9999999 ? { err: '数量が大きすぎます（7桁まで）' } : { n: n };
+  }
+  if (/^\d*\.\d*$/.test(t)) return { err: '数量は整数で入力してください（小数は使えません）' };
+  if (/^-/.test(t)) return { err: '0以上の数値を入力してください' };
+  return { err: '数量は数字で入力してください' };
 }
 
 /* ★ [v4.0.0] ③ 長さの妥当性。対象部材では必須。
@@ -1699,7 +1726,34 @@ function openDB() {
     };
     r.onsuccess = function(e) { _db = e.target.result; res(_db); };
     r.onerror   = function(e) { rej(e.target.error); };
+    /* ★ [v5.5.0] 古い版のアプリが別のタブで開いていると、DBの更新が止まったまま何も起きない */
+    r.onblocked = function() { rej(new Error('別のタブで棚卸アプリが開いています')); };
   });
+}
+
+/* ★ [v5.5.0] 端末にデータを保存できないとき（プライベートモード・容量不足・別タブなど）は、
+   何も言わずに止まらず、画面いっぱいに理由と直し方を出す（田嶋さん判断 #13）。 */
+function showDbFatal(e) {
+  var msg = (e && e.message) ? e.message : String(e || '');
+  var d = document.createElement('div');
+  d.id = 'dbFatal';
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;color:#1b2440;padding:28px 20px;'
+    + 'font-size:16px;line-height:1.7;overflow:auto;';
+  d.innerHTML = '<div style="font-size:20px;font-weight:700;color:#c62828;margin-bottom:12px;">⚠ この端末にデータを保存できません</div>'
+    + '<div>棚卸アプリは登録した記録を端末に保存してから送信します。今の状態では登録できません。</div>'
+    + '<div style="margin-top:12px;font-weight:700;">次を確かめてください</div>'
+    + '<ol style="margin:6px 0 0 20px;padding:0;">'
+    + '<li>シークレット（プライベート）モードで開いていないか → 通常の画面で開き直す</li>'
+    + '<li>棚卸アプリを別のタブでも開いていないか → ほかのタブを閉じて開き直す</li>'
+    + '<li>端末の空き容量が少なくないか → 不要な写真・アプリを消す</li>'
+    + '</ol>'
+    + '<div style="margin-top:12px;color:#6b7a99;font-size:13px;">理由: ' + escHtmlDb(msg) + '</div>'
+    + '<button type="button" onclick="location.reload()" style="margin-top:18px;font-size:17px;padding:10px 18px;'
+    + 'border-radius:10px;border:0;background:#1a3fa0;color:#fff;">開き直す</button>';
+  document.body.appendChild(d);
+}
+function escHtmlDb(t) {
+  return String(t).replace(/[&<>"']/g, function(c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; });
 }
 function tx_(s, m) { return _db.transaction(s, m).objectStore(s); }
 
@@ -1994,7 +2048,14 @@ function isOnline() {
    起動処理
    ============================================================ */
 async function init() {
-  await openDB();
+  /* ★ [v5.5.0] 開けなければ理由を出して止める（旧版は何も表示されないまま動かなかった） */
+  try {
+    if (!window.indexedDB) throw new Error('このブラウザは端末への保存（IndexedDB）に対応していません');
+    await openDB();
+  } catch (e) {
+    showDbFatal(e);
+    return;
+  }
   syncHdr(); setTimeout(syncHdr, 400);
   setInterval(updClock, 1000); updClock();
   setMode('jan');
@@ -2989,6 +3050,11 @@ async function doOCR() {
       toast('OCRエラー: ' + res.error, 'err');
       return;
     }
+    /* ★ [v5.5.0] GAS が例外で {success:false, message} を返したときは「読めなかった」ではなくエラーと出す */
+    if (res.success === false) {
+      toast('OCRエラー: ' + (res.message || '不明なエラー') + '（もう一度撮ってください）', 'err');
+      return;
+    }
     var rawT = (res.rawText || '').trim();
     var isErrText = rawT.indexOf('通信エラー') >= 0
                  || rawT.indexOf('VISION_API') >= 0
@@ -3005,13 +3071,25 @@ async function doOCR() {
     var picked = pickOcrCode(rawT, res.part);   /* ★ [v5.3.0] 読み取り文字をマスタと照らして拾い直す */
     if (picked) {
       inp.value = normalizeOcrCode(picked.code); inp.className = '';
-      document.getElementById('oph').textContent = '修正が必要な場合は直接編集し、マスタ検索を押してください';
-      document.getElementById('sb-srch').style.display = 'flex';
-      toast('図番を読み取りました', 'ok');
+      var ophEl = document.getElementById('oph');
+      /* ★ [v5.5.0] マスタに合わせて文字を置き換えたときは、読み取った文字と並べて見せる（田嶋さん判断 #6）。
+         特注品（マスタに無い）が、似たマスタの図番に置き換わっていないかを作業者が確かめられるように。 */
+      if (picked.how === 'master' && picked.read && picked.read !== picked.code) {
+        ophEl.textContent = '⚠ 読み取り「' + picked.read + '」→ マスタ「' + picked.code + '」に合わせました。違う場合は直接直してください';
+        ophEl.classList.add('ocr-fixed');
+        document.getElementById('sb-srch').style.display = 'flex';
+        toast('読み取り ' + picked.read + ' → マスタ ' + picked.code, 'info');
+      } else {
+        ophEl.textContent = '修正が必要な場合は直接編集し、マスタ検索を押してください';
+        ophEl.classList.remove('ocr-fixed');
+        document.getElementById('sb-srch').style.display = 'flex';
+        toast('図番を読み取りました', 'ok');
+      }
     } else if (rawT) {
       var rv = normalizeOcrCode(rawT.replace(/\r?\n/g,' ').trim().substring(0, 40));
       inp.value = rv; inp.className = 'editing';
       document.getElementById('oph').textContent = '図番部分のみ残して修正し、マスタ検索してください';
+      document.getElementById('oph').classList.remove('ocr-fixed');   /* ★ [v5.5.0] */
       document.getElementById('sb-srch').style.display = 'flex';
       toast('図番を確認・修正してマスタ検索してください', 'info');
     } else {
@@ -3163,15 +3241,19 @@ function ocrMasterCandidates(text) {
               if (a !== b) cost += _ocrPairs[a + b] ? 1 : 99;
             }
             if (cost > maxCost) continue;
-            if (!found[code]) { found[code] = { cost: cost, pos: pos }; order.push(code); }
-            else if (cost < found[code].cost) found[code].cost = cost;
+            if (!found[code]) { found[code] = { cost: cost, pos: pos, src: base }; order.push(code); }
+            else if (cost < found[code].cost) { found[code].cost = cost; found[code].src = base; }
           }
           pos++;
         }
       }
     }
   }
-  return order.sort(function(x, y) { return found[x].cost - found[y].cost || found[x].pos - found[y].pos; });
+  var sorted = order.sort(function(x, y) { return found[x].cost - found[y].cost || found[x].pos - found[y].pos; });
+  /* ★ [v5.5.0] 読み取った文字（マスタに合わせる前）を見せるため、図番ごとに覚えておく */
+  sorted.src = {};
+  sorted.forEach(function(c) { sorted.src[c] = found[c].src; });
+  return sorted;
 }
 
 /* ② マスタに無いとき（特注品など）：GAS の extractPart() と同じ点数付けを、行ごとに行う。
@@ -3205,7 +3287,7 @@ function ocrLineBestToken(text) {
 /* ①→②→③ の順で図番を決める。{ code, how: 'master'|'line'|'gas' } または null */
 function pickOcrCode(rawText, gasPart) {
   var m = ocrMasterCandidates(rawText);
-  if (m.length) return { code: m[0], how: 'master' };
+  if (m.length) return { code: m[0], how: 'master', read: (m.src && m.src[m[0]]) || m[0] };   /* ★ [v5.5.0] read */
   var t = ocrLineBestToken(rawText);
   if (t) return { code: t, how: 'line' };
   return gasPart ? { code: gasPart, how: 'gas' } : null;
@@ -3226,6 +3308,7 @@ function opiEdit(e) {
   var el = document.getElementById('opi');
   el.className = 'editing';
   document.getElementById('oph').textContent = '✎ 編集中 — 修正後にマスタ検索してください';
+  document.getElementById('oph').classList.remove('ocr-fixed');   /* ★ [v5.5.0] */
 
   var raw = el.value;
   /* ★ [v5.0.7] 日本語キーボードで確定すると全角（ＨＦ１２０）になることがある。
@@ -3399,7 +3482,7 @@ function applyCode(code, src) {
     var opiEl = document.getElementById('opi');
     if (opiEl) { opiEl.value = '----'; opiEl.className = ''; }
     var ophEl = document.getElementById('oph');
-    if (ophEl) { ophEl.textContent = 'OCR読み取り後、手修正も可能です'; }
+    if (ophEl) { ophEl.textContent = 'OCR読み取り後、手修正も可能です'; ophEl.classList.remove('ocr-fixed'); }   /* ★ [v5.5.0] */
     var oboxEl = document.getElementById('obox');
     if (oboxEl) { oboxEl.classList.remove('on'); }
     var sbsEl = document.getElementById('sb-srch');
@@ -3509,10 +3592,10 @@ function openRegModal(isHit) {
      コードは省いてバッジを1行に収め、モーダルの高さを変えない。未選択は何が足りないかを出す。 */
   var opRow = document.getElementById('regOpRow');
   opRow.innerHTML = '';
-  [[locV, '棚卸場所未選択'], [persP ? persP.name : '', '担当者未選択']].forEach(function(pair) {   /* ★ [v5.0.4] */
+  [[locV, '棚卸場所未選択', '📍 ', ''], [persP ? persP.name : '', '担当者未選択', '👤 ', ' pers']].forEach(function(pair) {   /* ★ [v5.0.4] */
     var sp = document.createElement('span');
-    sp.className = 'reg-op-badge' + (pair[0] ? '' : ' unset');   /* ★ [v5.0.1] empty は .empty と衝突 */
-    sp.textContent = pair[0] || pair[1];
+    sp.className = 'reg-op-badge' + pair[3] + (pair[0] ? '' : ' unset');   /* ★ [v5.0.1] empty は .empty と衝突 */
+    sp.textContent = pair[0] ? pair[2] + pair[0] : pair[1];   /* ★ [v5.5.0] 場所・担当者の印を付ける */
     opRow.appendChild(sp);
   });
 
@@ -3824,11 +3907,14 @@ async function regData() {
 async function regDataBody() {
   /* ★ [v3.0.0] 数量をモーダルの入力欄から取得 */
   var qtyInp = document.getElementById('regQtyInput');
-  var qtyVal = parseInt(qtyInp ? qtyInp.value : '0', 10);
-  if (isNaN(qtyVal)) qtyVal = 0;   /* ★ [v3.3.0] 空欄は0として登録 */
-  if (qtyVal < 0) {
-    toast('0以上の数値を入力してください', 'err'); return;
+  /* ★ [v5.5.0] 小数・数字でない入力はエラー（旧版は parseInt で 2.5 → 2 にしていた） */
+  var qtyP = parseQtyInput(qtyInp ? qtyInp.value : '', qtyInp);
+  if (qtyP.err) {
+    toast(qtyP.err, 'err');
+    if (qtyInp) { qtyInp.focus(); qtyInp.select(); }
+    return;
   }
+  var qtyVal = qtyP.n;   /* ★ [v3.3.0] 空欄は0（★ [v5.5.0] 下で確認を出す） */
 
   /* ★ [v4.0.0] ③ 長さは対象部材では必須。
      数量欄のEnterキーからは regData() が直接呼ばれ、登録ボタンの disabled を
@@ -3856,6 +3942,13 @@ async function regDataBody() {
     var regItsChk = document.getElementById('regItsSelect');
     if (regItsChk && !regItsChk.value) miss.push('在庫区分');
     toast(miss.length ? (miss.join('・') + 'を選んでください') : '未入力の項目があります', 'err');
+    return;
+  }
+
+  /* ★ [v5.5.0] 数量0（空欄を含む）で登録するときは確認する（田嶋さん判断 #7）。
+     空欄のまま Enter を押しただけで 0 が登録されるのを防ぐ。 */
+  if (qtyVal === 0 && !confirm('数量が 0 です。0 で登録しますか？')) {
+    if (qtyInp) { qtyInp.focus(); qtyInp.select(); }
     return;
   }
 
@@ -3970,6 +4063,7 @@ function resetScan() {
   opi.value = '----'; opi.className = '';
   var maniR = document.getElementById('mani'); if (maniR) maniR.value = '';   /* ★ [v5.0.8] 次の入力に備えて空にする */
   document.getElementById('oph').textContent = 'OCR読み取り後、手修正も可能です';
+  document.getElementById('oph').classList.remove('ocr-fixed');   /* ★ [v5.5.0] */
   document.getElementById('obox').classList.remove('on');
   document.getElementById('sb-srch').style.display = 'none';
   var ze = document.getElementById('zuno');
@@ -4294,7 +4388,8 @@ async function openEditModal(id) {
 
   /* 数量 */
   var qtyInp = document.getElementById('emQtyInput');
-  qtyInp.value = (item.quantity > 0) ? item.quantity : '';
+  /* ★ [v5.5.0] 数量0の記録は「0」と表示する（旧版は空欄に見え、0 と打ち直さないと保存できなかった） */
+  qtyInp.value = (item.quantity === '' || item.quantity === null || item.quantity === undefined) ? '' : item.quantity;
   document.getElementById('emUnitLabel').textContent = item.unit || '個';
 
   /* ★ [v4.0.0] ③ 長さ（対象部材のみ） */
@@ -4363,8 +4458,9 @@ function onEmLenInput() {
 function updEmSaveBtn() {
   var btn = document.getElementById('emSaveBtn');
   if (!btn || !_editItem) return;
-  var qty = parseInt(document.getElementById('emQtyInput').value, 10);
-  var ok  = !isNaN(qty) && qty >= 0;
+  /* ★ [v5.5.0] 空欄だけ押せなくする。小数などは「保存」でエラーの理由を出す */
+  var emQ = document.getElementById('emQtyInput');
+  var ok  = !parseQtyInput(emQ.value, emQ).empty;
   /* OCR時は図番が空だと保存不可（★ [v5.0.8] 手入力も同じ） */
   if (_editItem.scan_src === 'ocr' || _editItem.scan_src === 'manual') {
     var z = document.getElementById('emZunoInput').value.trim();
@@ -4500,10 +4596,14 @@ async function saveEditModal() {
   if (!_editItem) return;
   if (_sending) { toast('送信中です。少し待ってからもう一度「保存」を押してください', 'info'); return; }   /* ★ [v5.4.0] */
 
-  var newQty = parseInt(document.getElementById('emQtyInput').value, 10);
-  if (isNaN(newQty) || newQty < 0) {
-    toast('0以上の数値を入力してください', 'err'); return;
+  /* ★ [v5.5.0] 小数・数字でない入力はエラー。0 にするときは確認する */
+  var emQtyEl = document.getElementById('emQtyInput');
+  var emQtyP  = parseQtyInput(emQtyEl.value, emQtyEl);
+  if (emQtyP.err || emQtyP.empty) {
+    toast(emQtyP.err || '数量を入力してください', 'err'); return;
   }
+  var newQty = emQtyP.n;
+  if (newQty === 0 && Number(_editItem.quantity) !== 0 && !confirm('数量を 0 にします。よろしいですか？')) return;
 
   /* ★ [v4.0.0] ③ 長さは対象部材では必須（保存ボタンの活性に加えた二重の防波堤） */
   var emLenBlk = document.getElementById('emLenBlock');
@@ -4532,6 +4632,13 @@ async function saveEditModal() {
      この判定を先に取っておかないと、下で sent_flag=0 に戻した後では
      元がシートに存在した行かどうかが分からなくなる。 */
   var wasSent = (oldItem.sent_flag === 1);
+
+  /* ★ [v5.6.0] A3 案A（田嶋さん判断 #4）：シートに今ある形を記録に持たせる（sheet_ref）。
+     送信済みの記録を直したとき、すぐの update_item が失敗（圏外など）すると、旧版は次の一括送信が
+     新しいキーで行を追加し、修正前の行も残って2行になっていた。シートに反映できるまで sheet_ref を残し、
+     一括送信で prev として送る（GAS v5.2.0 がその行を置き換える）。
+     前の修正がまだ反映されていなければ、シートにあるのはその前の形なので、古い sheet_ref をそのまま使う。 */
+  if (wasSent && !_editItem.sheet_ref) _editItem.sheet_ref = toSendPayload(oldItem);
 
   /* 新しい値を適用 */
   _editItem.quantity = newQty;
@@ -4615,20 +4722,38 @@ async function saveEditModal() {
      タイミング次第で重複行が発生し得た（GASは直列化されていない）。
      送信済みだったレコードだけ、シート上の既存行を即時上書きする。
      未送信のものは通常の「一括送信」に任せれば正しく1行だけ作られる。 */
-  if (wasSent) {
+  /* ★ [v5.6.0] シートに行がある（sheet_ref がある）ときだけ、すぐ update_item を送る。旧行はシートに今ある形。
+     成功して、その後に直していなければ、シートと記録が同じになったので送信済みに戻す。
+     失敗しても sheet_ref が残るので、次の一括送信（prev 付き）で同じ行が直る。 */
+  if (savedItem.sheet_ref) {
+    var sentRef = savedItem.sheet_ref;
     gasWithRetry(function() {
       return gasPost({
         action:  'update_item',
         /* ★ [v4.0.0] 送信形（length / isCustom を含む）に揃えて渡す。
            GASは oldItem.isCustom で旧行のあるシートを、newItem.isCustom で
            書き込み先シートを判断する。 */
-        oldItem: toSendPayload(oldItem),
+        oldItem: sentRef,
         newItem: toSendPayload(savedItem)
       });
+    }).then(function(res) {
+      if (res && res.success) return markSyncedAfterEdit(savedItem.id, savedItem.modified_at);
     }).catch(function(e) {
-      toast('GAS同期失敗（次回一括送信時に再送されます）: ' + e.message, 'info');
+      toast('シートへの反映は次の送信で行います（' + e.message + '）', 'info');
     });
   }
+}
+
+/* ★ [v5.6.0] update_item が成功したら、その後に直していない限り「送信済み」に戻し、sheet_ref を消す */
+async function markSyncedAfterEdit(id, modifiedAt) {
+  var cur = await dbGet('inv', id);
+  if (!cur || (cur.modified_at || '') !== (modifiedAt || '') || cur.sent_flag !== 0) return;
+  cur.sheet_ref  = null;
+  cur.sent_flag  = 1;
+  cur.last_error = '';
+  await dbP('inv', cur);
+  await rendHist();
+  await updBadge();
 }
 
 /* ============================================================
@@ -4662,6 +4787,13 @@ function toSendPayload(i) {
     inventoryType: i.inventoryType,
     isCustom:      i.is_custom ? 1 : 0
   };
+}
+
+/* ★ [v5.6.0] 一括送信用。シートにまだ直す前の形が残っていれば prev として付ける（GAS v5.2.0 が置き換える） */
+function toBatchPayload(i) {
+  var p = toSendPayload(i);
+  if (i.sheet_ref) p.prev = i.sheet_ref;
+  return p;
 }
 
 /* 手動送信（履歴タブの送信ボタン・案Gのモーダル）。従来どおり画面を止めて送る。 */
@@ -4703,49 +4835,75 @@ async function sendPending(opts) {
   _lastAttemptAt = Date.now();
   if (!auto) showLoad('送信中… ' + pend.length + '件');
 
-  var payload = {
-    action: 'register_batch',
-    items: pend.map(toSendPayload)
-  };
-
+  /* ★ [v5.5.0] 50件ずつに分けて送る（田嶋さん判断 #3）。
+     旧版は全件を1回で送っていたため、件数が多いと60秒で打ち切られ、GAS がまだ書いている間に
+     再送が重なって同じ行が2つできることがあった。途中の回で失敗したら、そこで止める
+     （送れた回の分は送信済みのまま。残りは未送信のまま次の送信で送る）。 */
+  var successCount = 0;
+  var errorCount   = 0;
+  var invalidCount = 0;
+  var stopMsg      = '';
   try {
-    var res = await gasWithRetry(function(){ return gasPost(payload); }, 3, auto);
+    for (var c0 = 0; c0 < pend.length; c0 += SEND_CHUNK) {
+    var part = pend.slice(c0, c0 + SEND_CHUNK);
+    if (!auto && pend.length > SEND_CHUNK) {
+      showLoad('送信中… ' + Math.min(c0 + SEND_CHUNK, pend.length) + ' / ' + pend.length + '件');
+    }
+    var res;
+    try {
+      res = await gasWithRetry(function(){
+        return gasPost({ action: 'register_batch', items: part.map(toBatchPayload) });   /* ★ [v5.6.0] prev 付き */
+      }, 3, auto);
+    } catch (eChunk) {
+      if (c0 === 0) throw eChunk;      /* 1回目から失敗 → 今までどおり「送信エラー」 */
+      stopMsg = eChunk.message;        /* 途中で失敗 → 送れた分は確定して止める */
+      break;
+    }
     var results = res.results || [];
 
     /* ★ 各itemの結果でsent_flagを判定 */
-    var successCount = 0;
-    var errorCount   = 0;
-    for (var j = 0; j < pend.length; j++) {
+    for (var j = 0; j < part.length; j++) {
       var r = results[j];
       /* ★ [v5.4.0] 送信している間に、この記録が削除・修正されていたら書き戻さない。
          旧版は送る前に取った記録（pend）で上書きしていたため、送信中に直した内容が消え、
          削除した記録が復活した（セルフチェック A2）。修正されたものは未送信のまま残り、次の送信で送られる。 */
-      var curRec = await dbGet('inv', pend[j].id);
+      var curRec = await dbGet('inv', part[j].id);
       if (!curRec) continue;
-      if ((curRec.modified_at || '') !== (pend[j].modified_at || '')) continue;
+      if ((curRec.modified_at || '') !== (part[j].modified_at || '')) continue;
       if (r && r.success) {
-        pend[j].sent_flag  = 1;
-        pend[j].last_error = '';
-        await dbP('inv', pend[j]);
+        part[j].sent_flag  = 1;
+        part[j].last_error = '';
+        part[j].sheet_ref  = null;   /* ★ [v5.6.0] シートの行は今の値になった */
+        /* ★ [v5.5.0] 締めた月の分として無効データのシートに入ったもの（GAS v5.1.0〜） */
+        if (r.invalid) { part[j].invalid_sheet = r.invalid; invalidCount++; }
+        await dbP('inv', part[j]);
         successCount++;
       } else {
         /* エラー: sent_flagを立てず、エラー情報のみ更新 */
-        pend[j].sent_flag  = 0;
-        pend[j].last_error = (r && r.error) ? r.error : '不明なエラー';
-        await dbP('inv', pend[j]);
+        part[j].sent_flag  = 0;
+        part[j].last_error = (r && r.error) ? r.error : (res.message || '不明なエラー');   /* ★ [v5.5.0] 理由を残す */
+        await dbP('inv', part[j]);
         errorCount++;
       }
     }
+    }
 
     if (!auto) hideLoad();
+    var notSent = stopMsg ? (pend.length - successCount - errorCount) : 0;
     _lastSendMsg = fmtHm(new Date()) + ' ' + (auto ? '自動' : '手動')
                  + ' 成功' + successCount + '件'
-                 + (errorCount ? ' / エラー' + errorCount + '件' : '');
+                 + (errorCount ? ' / エラー' + errorCount + '件' : '')
+                 + (notSent ? ' / 途中で止まり' + notSent + '件は未送信' : '');
 
-    if (errorCount === 0) {
-      toast((auto ? '自動送信: ' : '') + successCount + '件を送信しました', 'ok');
+    var invNote = invalidCount ? '（うち' + invalidCount + '件は締めた月の分として無効データに保存）' : '';
+    if (stopMsg) {
+      if (!auto || successCount) {
+        toast('途中で送信できませんでした。' + successCount + '件は送信済み、残り' + notSent + '件は未送信のまま（' + stopMsg + '）' + invNote, 'err');
+      }
+    } else if (errorCount === 0) {
+      toast((auto ? '自動送信: ' : '') + successCount + '件を送信しました' + invNote, invalidCount ? 'info' : 'ok');
     } else {
-      toast('成功:' + successCount + '件 / エラー:' + errorCount + '件 — エラー分は未送信のまま', 'err');
+      toast('成功:' + successCount + '件 / エラー:' + errorCount + '件 — エラー分は未送信のまま' + invNote, 'err');
     }
     await rendHist();
     await updBadge();
